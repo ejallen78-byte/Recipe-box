@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Recipe Box</title>
+<style>
+:root { color-scheme: light; --green:#2d7a3a; --green-light:#e8f5e9; --accent:#ff6b35; --bg:#fafaf8; --card:#fff; --border:#e0e0e0; --text:#222; --muted:#666; --radius:12px; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;max-width:100vw}
+/* NAV */
+.nav{background:var(--green);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.nav h1{font-size:1.2rem;font-weight:700;flex:1}
+.nav-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:7px 12px;border-radius:20px;cursor:pointer;font-size:.85rem;white-space:nowrap}
+.nav-btn:hover{background:rgba(255,255,255,.35)}
+.nav-btn.active{background:#fff;color:var(--green);font-weight:600}
+/* SEARCH BAR */
+.search-bar{padding:8px 12px;background:#fff;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center;overflow:hidden}
+.search-bar input{flex:1;min-width:0;padding:9px 12px;border:1px solid var(--border);border-radius:20px;font-size:.95rem;outline:none}
+.search-bar input:focus{border-color:var(--green)}
+.search-bar .btn{white-space:nowrap;flex-shrink:0;padding:9px 12px}
+.filter-scroll{display:flex;gap:8px;padding:8px 16px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--border)}
+.filter-scroll::-webkit-scrollbar{display:none}
+.chip{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:.82rem;white-space:nowrap;color:var(--text)}
+.chip.active{background:var(--green);color:#fff;border-color:var(--green)}
+/* GRID */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;padding:16px}
+.card{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.card img{width:100%;height:120px;object-fit:cover;background:#f0f0f0}
+.card-body{padding:10px}
+.card-title{font-size:.9rem;font-weight:600;line-height:1.3;margin-bottom:4px}
+.card-meta{font-size:.75rem;color:var(--muted)}
+.card-tag{display:inline-block;background:var(--green-light);color:var(--green);font-size:.7rem;padding:2px 8px;border-radius:10px;margin-top:4px}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;overflow-y:auto;padding:20px 12px}
+.modal-overlay.open{display:flex;align-items:flex-start;justify-content:center}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:600px;overflow:hidden}
+.modal-header{background:var(--green);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+.modal-header h2{font-size:1.1rem}
+.close-btn{background:none;border:none;color:#fff;font-size:1.5rem;cursor:pointer;line-height:1}
+.modal-body{padding:20px}
+.recipe-img{width:100%;max-height:220px;object-fit:cover;background:#f0f0f0}
+.section-label{font-weight:700;color:var(--green);margin:14px 0 6px;font-size:.9rem;text-transform:uppercase;letter-spacing:.05em}
+.ingredient-group{font-weight:600;margin:8px 0 4px;font-size:.9rem}
+.ingredient-item,.instruction-item{padding:4px 0;font-size:.9rem;border-bottom:1px solid #f5f5f5;line-height:1.4}
+.instruction-item{display:flex;gap:10px}
+.step-num{background:var(--green);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;margin-top:2px}
+.scaler{display:flex;align-items:center;gap:10px;margin:10px 0;background:var(--green-light);padding:10px 14px;border-radius:10px}
+.scaler label{font-size:.85rem;color:var(--green);font-weight:600}
+.scaler input{width:60px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:.9rem;text-align:center}
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{padding:9px 16px;border-radius:20px;border:none;cursor:pointer;font-size:.85rem;font-weight:600}
+.btn-green{background:var(--green);color:#fff}
+.btn-outline{background:#fff;border:1px solid var(--border);color:var(--text)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn:hover{opacity:.88}
+/* IMPORT MODAL */
+.import-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px}
+.import-tab{padding:10px 16px;cursor:pointer;font-size:.9rem;color:var(--muted);border-bottom:2px solid transparent}
+.import-tab.active{color:var(--green);border-color:var(--green);font-weight:600}
+.import-section{display:none}
+.import-section.active{display:block}
+.file-drop{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;color:var(--muted);font-size:.9rem;cursor:pointer;transition:border-color .2s}
+.file-drop:hover{border-color:var(--green)}
+.file-drop input{display:none}
+textarea.paste-area{width:100%;height:160px;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:.85rem;resize:vertical;font-family:inherit}
+.url-input{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:10px;font-size:.9rem;margin-bottom:10px}
+.progress{background:#f0f0f0;border-radius:10px;height:8px;margin:10px 0;overflow:hidden;display:none}
+.progress-bar{background:var(--green);height:100%;border-radius:10px;transition:width .3s}
+.status-msg{font-size:.85rem;color:var(--muted);margin-top:8px}
+/* VIEWS */
+.view{display:none}
+.view.active{display:block}
+/* SHOPPING LIST */
+.shopping-header{padding:16px;background:#fff;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.shopping-header h2{flex:1;font-size:1.1rem}
+.shopping-list{padding:16px}
+.shopping-item{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #f5f5f5}
+.shopping-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--green);flex-shrink:0}
+.shopping-item label{font-size:.92rem;cursor:pointer}
+.shopping-item.checked label{text-decoration:line-through;color:var(--muted)}
+.shopping-group{font-weight:700;color:var(--green);margin:14px 0 6px;font-size:.85rem;text-transform:uppercase}
+/* MEAL PLANNER */
+.planner{padding:16px}
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:12px}
+.day-col{background:#fff;border-radius:10px;border:1px solid var(--border);overflow:hidden}
+.day-header{background:var(--green);color:#fff;text-align:center;padding:6px 4px;font-size:.75rem;font-weight:600}
+.day-slots{min-height:120px;padding:4px}
+.meal-slot{background:var(--green-light);border-radius:6px;padding:4px 6px;margin-bottom:4px;font-size:.72rem;color:var(--green);font-weight:600;cursor:pointer;position:relative}
+.meal-slot .remove-meal{position:absolute;top:2px;right:4px;background:none;border:none;color:var(--green);cursor:pointer;font-size:.8rem;line-height:1}
+.add-to-plan{background:#f5f5f5;border:1px dashed var(--border);border-radius:6px;padding:4px;text-align:center;font-size:.7rem;color:var(--muted);cursor:pointer}
+.add-to-plan:hover{border-color:var(--green);color:var(--green)}
+/* ADD/EDIT RECIPE FORM */
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:.85rem;font-weight:600;margin-bottom:4px;color:var(--text)}
+.form-group input,.form-group textarea,.form-group select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:.9rem;font-family:inherit;outline:none}
+.form-group input:focus,.form-group textarea:focus{border-color:var(--green)}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* EMPTY STATE */
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty .icon{font-size:3rem;margin-bottom:12px}
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;font-size:.9rem;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+/* RESPONSIVE */
+@media(max-width:480px){
+  .grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:10px}
+  .week-grid{grid-template-columns:repeat(7,1fr);gap:3px}
+  .day-header{font-size:.6rem;padding:4px 2px}
+  .meal-slot{font-size:.65rem}
+}
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <h1>🍽️ My Recipe Box</h1>
+  <button class="nav-btn active" onclick="showView('recipes')">Recipes</button>
+  <button class="nav-btn" onclick="showView('planner')">Planner</button>
+  <button class="nav-btn" onclick="showView('shopping')">List</button>
+</nav>
+
+<!-- ===== RECIPES VIEW ===== -->
+<div id="view-recipes" class="view active">
+  <div class="search-bar">
+    <input type="search" id="searchInput" placeholder="Search recipes or ingredients…" oninput="renderGrid()">
+    <button class="btn btn-green" onclick="openAddModal()">+ Add</button>
+    <button class="btn btn-outline" onclick="openImportModal()">Import</button>
+    <button class="btn btn-outline" onclick="toggleBackupMenu(event)" id="backupBtn">⋯</button>
+  </div>
+  <div id="backupMenu" style="display:none;position:fixed;top:60px;right:12px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:150;min-width:210px">
+    <!-- Desktop-only items -->
+    <div id="menu-desktop-items">
+      <div onclick="pushToDrive()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">☁️ Save to Google Drive</div>
+      <div onclick="pullFromDrive()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">🔄 Load from Google Drive</div>
+    </div>
+    <!-- Sync link: visible on any desktop (Cowork or Chrome) -->
+    <div id="menu-sync-link">
+      <div onclick="generateSyncLink()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">📱 Email sync link to phone</div>
+    </div>
+    <!-- Phone-only items -->
+    <div id="menu-phone-items">
+      <div onclick="phonePushToDrive()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">☁️ Save to Google Drive</div>
+      <div onclick="phonePullFromDrive()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">🔄 Load from Google Drive</div>
+      <div onclick="openGoogleSetup()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">🔑 Connect Google Drive</div>
+      <div onclick="openPasteImport()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">📋 Paste backup text</div>
+    </div>
+    <div onclick="removeDuplicates()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">🧹 Remove duplicates</div>
+    <div onclick="fixMissingImages()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">🖼️ Fix missing images</div>
+    <div onclick="exportJSON(false)" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">📤 Export backup</div>
+    <div onclick="document.getElementById('importBackupFile').click()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">📥 Import backup file</div>
+    <div onclick="openPasteImport()" style="padding:12px 16px;cursor:pointer;font-size:.9rem">📋 Paste backup text</div>
+    <input type="file" id="importBackupFile" accept=".json,.txt" style="display:none" onchange="importJSON(this.files[0])">
+  </div>
+
+  <!-- GOOGLE DRIVE SETUP MODAL (phone) -->
+  <div class="modal-overlay" id="googleSetupOverlay" onclick="closeOnBg(event,'googleSetupOverlay')">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>🔑 Connect Google Drive</h2>
+        <button class="close-btn" onclick="closeModal('googleSetupOverlay')">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:14px">One-time setup so your phone can save & load recipes from Google Drive automatically.</p>
+        <div style="background:var(--green-light);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;margin-bottom:14px">
+          <strong>Setup steps (5 min):</strong><br>
+          1. Go to <strong>console.cloud.google.com</strong><br>
+          2. Create a project (or pick an existing one)<br>
+          3. APIs &amp; Services → Enable APIs → enable <strong>Google Drive API</strong><br>
+          4. APIs &amp; Services → Credentials → Create Credentials → <strong>OAuth client ID</strong><br>
+          5. Application type: <strong>Web application</strong><br>
+          6. Authorized JavaScript origins: add your Netlify URL (e.g. <em>https://your-app.netlify.app</em>)<br>
+          7. Copy the <strong>Client ID</strong> and paste it below
+        </div>
+        <div class="form-group">
+          <label style="font-size:.85rem;font-weight:600">Google OAuth Client ID</label>
+          <input type="text" id="googleClientIdInput" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com"
+            style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:.82rem;font-family:monospace">
+        </div>
+        <button class="btn btn-green" style="width:100%;margin-top:4px" onclick="saveGoogleClientId()">Save &amp; Connect →</button>
+        <div id="googleSetupStatus" style="font-size:.82rem;color:var(--muted);margin-top:8px;text-align:center"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYNC LINK MODAL -->
+  <div class="modal-overlay" id="syncLinkOverlay" onclick="closeOnBg(event,'syncLinkOverlay')">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>📱 Email Sync Link to Phone</h2>
+        <button class="close-btn" onclick="closeModal('syncLinkOverlay')">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="syncLinkStep1">
+          <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Enter your Netlify app URL so the link opens your Recipe Box on your phone.</p>
+          <input id="netlifyUrlInput" class="url-input" placeholder="https://your-app.netlify.app" style="margin-bottom:10px">
+          <button class="btn btn-green" style="width:100%" onclick="buildSyncLink()">Build sync link →</button>
+          <div id="syncLinkBuildStatus" style="font-size:.82rem;color:var(--muted);margin-top:8px"></div>
+        </div>
+        <div id="syncLinkStep2" style="display:none">
+          <p style="font-size:.85rem;color:var(--muted);margin-bottom:10px">Your sync link is ready! Copy it and email/text it to yourself, then tap it on your phone.</p>
+          <textarea id="syncLinkOutput" style="width:100%;height:100px;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-family:monospace;resize:none;word-break:break-all" readonly></textarea>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-green" style="flex:1" onclick="copySyncLink()">📋 Copy link</button>
+            <button class="btn btn-outline" style="flex:1" onclick="emailSyncLink()">✉️ Open in Mail</button>
+          </div>
+          <p style="font-size:.78rem;color:var(--muted);margin-top:10px">On your phone: tap the link → Safari opens your Recipe Box → recipes load automatically.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PASTE IMPORT MODAL -->
+  <div class="modal-overlay" id="pasteImportOverlay" onclick="closeOnBg(event,'pasteImportOverlay')">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Paste Backup Text</h2>
+        <button class="close-btn" onclick="closeModal('pasteImportOverlay')">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Open your backup .json file in any text editor or email, select all, copy, then paste here.</p>
+        <textarea id="pasteImportText" style="width:100%;height:180px;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:.82rem;font-family:monospace;resize:none" placeholder='{"recipes":[...]}'></textarea>
+        <button class="btn btn-green" style="width:100%;margin-top:12px" onclick="importFromPastedText()">Load Recipes →</button>
+        <div id="pasteImportStatus" style="font-size:.82rem;color:var(--muted);margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+  <div id="syncStatus" style="display:none;position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:8px 18px;border-radius:20px;font-size:.82rem;z-index:999">☁️ Saving to Drive…</div>
+  <div class="filter-scroll" id="filterChips"></div>
+  <div class="grid" id="recipeGrid"></div>
+</div>
+
+<!-- ===== PLANNER VIEW ===== -->
+<div id="view-planner" class="view">
+  <div class="shopping-header">
+    <h2>📅 Meal Planner</h2>
+    <button class="btn btn-outline" onclick="clearWeek()">Clear week</button>
+  </div>
+  <div class="planner">
+    <div class="week-grid" id="weekGrid"></div>
+    <button class="btn btn-green" style="width:100%" onclick="planToShoppingList()">→ Add week to shopping list</button>
+  </div>
+</div>
+
+<!-- ===== SHOPPING VIEW ===== -->
+<div id="view-shopping" class="view">
+  <div class="shopping-header">
+    <h2>🛒 Shopping List</h2>
+    <button class="btn btn-outline" onclick="clearShoppingList()">Clear</button>
+    <button class="btn btn-green" onclick="copyShoppingList()">Copy</button>
+  </div>
+  <div id="shoppingListEl" class="shopping-list"></div>
+</div>
+
+<!-- ===== RECIPE DETAIL MODAL ===== -->
+<div class="modal-overlay" id="detailOverlay" onclick="closeOnBg(event,'detailOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="detailTitle">Recipe</h2>
+      <button class="close-btn" onclick="closeModal('detailOverlay')">×</button>
+    </div>
+    <img id="detailImg" class="recipe-img" src="" alt="" onerror="this.style.display='none'">
+    <div class="modal-body">
+      <div id="detailMeta" style="font-size:.82rem;color:var(--muted);margin-bottom:8px"></div>
+      <div id="detailDesc" style="font-size:.9rem;margin-bottom:8px;color:var(--muted)"></div>
+      <div class="scaler">
+        <label>Scale servings:</label>
+        <input type="number" id="scalerInput" value="1" min="0.25" max="10" step="0.25" oninput="renderScaledIngredients()">
+        <span id="scalerLabel" style="font-size:.82rem;color:var(--muted)"></span>
+      </div>
+      <div class="section-label">Ingredients</div>
+      <div id="detailIngredients"></div>
+      <div class="section-label">Instructions</div>
+      <div id="detailInstructions"></div>
+      <div id="detailNotesWrap"><div class="section-label">Notes</div><div id="detailNotes"></div></div>
+      <div class="action-row">
+        <button class="btn btn-green" onclick="addCurrentToShoppingList()">+ Shopping List</button>
+        <button class="btn btn-outline" onclick="addCurrentToPlanner()">+ Meal Planner</button>
+        <button class="btn btn-outline" onclick="quickEditImage(currentRecipeId)">📷 Image</button>
+        <button class="btn btn-outline" onclick="editCurrentRecipe()">✏️ Edit</button>
+        <button class="btn btn-outline" style="color:red" onclick="deleteCurrentRecipe()">🗑️ Delete</button>
+      </div>
+      <div id="detailSource" style="margin-top:10px;font-size:.78rem;color:var(--muted)"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== IMPORT MODAL ===== -->
+<div class="modal-overlay" id="importOverlay" onclick="closeOnBg(event,'importOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Import Recipes</h2>
+      <button class="close-btn" onclick="closeModal('importOverlay')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-tabs">
+        <div class="import-tab active" onclick="switchImportTab('copymethat')">Copy Me That</div>
+        <div class="import-tab" onclick="switchImportTab('pepperplate')">Pepperplate</div>
+        <div class="import-tab" onclick="switchImportTab('paste')">Paste Text</div>
+        <div class="import-tab" onclick="switchImportTab('url')">From URL</div>
+      </div>
+
+      <div class="import-section active" id="import-copymethat">
+        <p style="font-size:.85rem;margin-bottom:12px;color:var(--muted)">Upload the <strong>full .zip file</strong> exported from Copy Me That — images will be imported automatically.</p>
+        <label class="file-drop" id="cmtDrop">
+          <div>📦 Tap to select your <strong>Copy_Me_That_…zip</strong> file</div>
+          <input type="file" accept=".zip,.html" onchange="importCopyMeThatFile(this.files[0])">
+        </label>
+        <div class="progress" id="cmtProgress"><div class="progress-bar" id="cmtBar" style="width:0%"></div></div>
+        <div class="status-msg" id="cmtStatus"></div>
+      </div>
+
+      <div class="import-section" id="import-pepperplate">
+        <p style="font-size:.85rem;margin-bottom:12px;color:var(--muted)">Upload all <strong>.txt files</strong> from your Pepperplate zip (select multiple).</p>
+        <label class="file-drop" id="ppDrop">
+          <div>📄 Tap to select .txt files (select all)</div>
+          <input type="file" accept=".txt" multiple onchange="importPepperplate(this.files)">
+        </label>
+        <div class="progress" id="ppProgress"><div class="progress-bar" id="ppBar" style="width:0%"></div></div>
+        <div class="status-msg" id="ppStatus"></div>
+      </div>
+
+      <div class="import-section" id="import-paste">
+        <p style="font-size:.85rem;margin-bottom:10px;color:var(--muted)">Paste recipe text from any website. AI will parse it into fields.</p>
+        <textarea class="paste-area" id="pasteText" placeholder="Paste recipe title, ingredients, instructions here…"></textarea>
+        <button class="btn btn-green" style="margin-top:10px;width:100%" onclick="parsePastedRecipe()">Parse with AI →</button>
+        <div class="status-msg" id="pasteStatus"></div>
+      </div>
+
+      <div class="import-section" id="import-url">
+        <p style="font-size:.85rem;margin-bottom:10px;color:var(--muted)">Enter a recipe URL to import. Works best with major recipe sites.</p>
+        <input class="url-input" id="urlInput" type="url" placeholder="https://www.allrecipes.com/recipe/…">
+        <button class="btn btn-green" style="width:100%" onclick="importFromUrl()">Fetch Recipe →</button>
+        <div class="status-msg" id="urlStatus"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADD/EDIT MODAL ===== -->
+<div class="modal-overlay" id="editOverlay" onclick="closeOnBg(event,'editOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="editTitle">Add Recipe</h2>
+      <button class="close-btn" onclick="closeModal('editOverlay')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Title *</label>
+        <input type="text" id="f-title" placeholder="Recipe name">
+      </div>
+      <div class="form-group">
+        <label>Categories</label>
+        <div id="f-category-picker" style="display:flex;flex-wrap:wrap;gap:6px;padding:6px 0"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="display:none"><input type="text" id="f-category"></div>
+        <div class="form-group">
+          <label>Servings</label>
+          <input type="text" id="f-yield" placeholder="e.g. 4 servings">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Active Time</label>
+          <input type="text" id="f-active" placeholder="e.g. 15 mins">
+        </div>
+        <div class="form-group">
+          <label>Total Time</label>
+          <input type="text" id="f-total" placeholder="e.g. 45 mins">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="f-desc" rows="2" placeholder="Brief description"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Ingredients (one per line; use "# Group Name" for sections)</label>
+        <textarea id="f-ingredients" rows="8" placeholder="1 cup flour&#10;2 eggs&#10;# Sauce&#10;1 tbsp olive oil"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Instructions (one step per line)</label>
+        <textarea id="f-instructions" rows="8" placeholder="Preheat oven to 350°F.&#10;Mix dry ingredients."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <textarea id="f-notes" rows="3" placeholder="Optional notes or tips"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Source URL</label>
+        <input type="url" id="f-url" placeholder="https://…">
+      </div>
+      <div class="form-group">
+        <label>Image URL</label>
+        <input type="url" id="f-image" placeholder="https://…">
+      </div>
+      <div class="action-row">
+        <button class="btn btn-green" onclick="saveRecipe()" style="flex:1">Save Recipe</button>
+        <button class="btn btn-outline" onclick="closeModal('editOverlay')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PLANNER: add to day modal -->
+<div class="modal-overlay" id="plannerOverlay" onclick="closeOnBg(event,'plannerOverlay')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="plannerOverlayTitle">Add to Meal Planner</h2>
+      <button class="close-btn" onclick="closeModal('plannerOverlay')">×</button>
+    </div>
+    <div class="modal-body" style="padding:12px">
+      <!-- Day picker (shown when coming from recipe detail) -->
+      <div id="dayPickerSection" style="display:none">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="dayPickerBtns"></div>
+      </div>
+      <!-- Recipe picker (shown when coming from planner + button) -->
+      <div id="recipePickerSection" style="display:none">
+        <input id="plannerSearch" type="search" placeholder="Search recipes…" oninput="filterPlannerPicker()"
+          style="width:100%;padding:9px 14px;border:1px solid var(--border);border-radius:20px;font-size:.95rem;outline:none;margin-bottom:10px">
+        <div id="plannerRecipeList" style="max-height:55vh;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STATE =====
+let recipes = JSON.parse(localStorage.getItem('recipes') || '[]');
+let mealPlan = JSON.parse(localStorage.getItem('mealPlan') || '{}');
+let shoppingList = JSON.parse(localStorage.getItem('shoppingList') || '[]');
+let currentRecipeId = null;
+let editingId = null;
+let baseServings = 1;
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+// ===== INDEXEDDB IMAGE STORE =====
+// Stores base64 images separately from localStorage (no size limit)
+const imageDB = (() => {
+  let _db = null;
+  async function open() {
+    if (_db) return _db;
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('RecipeImages', 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore('images');
+      req.onsuccess = e => { _db = e.target.result; resolve(_db); };
+      req.onerror = reject;
+    });
+  }
+  return {
+    async save(id, dataUrl) {
+      const db = await open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').put(dataUrl, id);
+        tx.oncomplete = resolve; tx.onerror = reject;
+      });
+    },
+    async loadAll() {
+      const db = await open();
+      return new Promise(resolve => {
+        const result = {};
+        const tx = db.transaction('images', 'readonly');
+        tx.objectStore('images').openCursor().onsuccess = e => {
+          const c = e.target.result;
+          if (c) { result[c.key] = c.value; c.continue(); } else resolve(result);
+        };
+        tx.onerror = () => resolve({});
+      });
+    },
+    async delete(id) {
+      const db = await open();
+      return new Promise(resolve => {
+        const tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').delete(id);
+        tx.oncomplete = resolve; tx.onerror = resolve;
+      });
+    }
+  };
+})();
+
+async function persistImages() {
+  // Write any in-memory base64 images to IndexedDB
+  for (const r of recipes) {
+    if (r.image && r.image.startsWith('data:')) {
+      await imageDB.save(r.id, r.image);
+    }
+  }
+}
+
+async function restoreImages() {
+  // Load images from IndexedDB back into in-memory recipes
+  const all = await imageDB.loadAll();
+  let any = false;
+  recipes.forEach(r => {
+    if (!r.image && all[r.id]) { r.image = all[r.id]; any = true; }
+    else if (r.image && r.image.startsWith('data:')) { /* already in memory */ }
+    else if (all[r.id]) r.image = all[r.id]; // IndexedDB always wins (freshest)
+  });
+  return any;
+}
+
+function save(skipDriveSync = false) {
+  // Always save slim to localStorage (images live in IndexedDB)
+  try {
+    localStorage.setItem('recipes', JSON.stringify(slimRecipes(recipes)));
+  } catch(e) { console.error('localStorage save failed:', e.message); }
+  try {
+    localStorage.setItem('mealPlan', JSON.stringify(mealPlan));
+    localStorage.setItem('shoppingList', JSON.stringify(shoppingList));
+  } catch(e) { /* ignore */ }
+  // Persist images to IndexedDB asynchronously
+  persistImages().catch(e => console.warn('IndexedDB image save failed:', e));
+  if (!skipDriveSync) {
+    if (typeof isCowork !== 'undefined' && isCowork) scheduleAutoSave();
+  }
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+// ===== VIEWS =====
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (name === 'planner') renderPlanner();
+  if (name === 'shopping') renderShoppingList();
+  if (name === 'recipes') renderGrid();
+}
+
+// ===== CATEGORIES =====
+const PRESET_CATEGORIES = ['Breakfast','Lunch','Dinner','Main','Side Dish','Appetizer','Soup','Salad','Dessert','Snack','Drink','Baking','Slow Cooker','Instant Pot','Vegetarian','Vegan','Gluten-Free','Quick & Easy'];
+
+// Normalize any comma-joined category strings in existing data
+function normalizeCategories() {
+  let changed = false;
+  recipes.forEach(r => {
+    const flat = (r.categories||[]).flatMap(c => c.split(',').map(s=>s.trim()).filter(Boolean));
+    if (flat.join('|') !== (r.categories||[]).join('|')) { r.categories = flat; changed = true; }
+  });
+  if (changed) save(true);
+}
+
+function allCategories() {
+  const cats = new Set();
+  recipes.forEach(r => (r.categories||[]).forEach(c => cats.add(c.trim())));
+  return [...cats].sort();
+}
+
+// Render the multi-select category picker in the edit form
+function renderCategoryPicker(selected = []) {
+  const all = [...new Set([...PRESET_CATEGORIES, ...allCategories(), ...selected])];
+  const sel = new Set(selected.map(s => s.trim()));
+  const picker = document.getElementById('f-category-picker');
+  picker.innerHTML = all.map(cat => {
+    const checked = sel.has(cat);
+    const id = 'cat-' + cat.replace(/[^a-z0-9]/gi,'_');
+    return `<label for="${id}" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid ${checked?'var(--green)':'var(--border)'};background:${checked?'var(--green)':'#fff'};color:${checked?'#fff':'var(--text)'};cursor:pointer;font-size:.82rem;user-select:none;transition:all .15s">
+      <input type="checkbox" id="${id}" value="${cat}" ${checked?'checked':''} style="display:none" onchange="refreshCategoryPicker()">
+      ${cat}
+    </label>`;
+  }).join('') +
+  `<button type="button" onclick="addCustomCategory()" style="padding:5px 12px;border-radius:20px;border:1px dashed var(--border);background:#fff;color:var(--muted);cursor:pointer;font-size:.82rem">+ Add</button>`;
+}
+
+function refreshCategoryPicker() {
+  // Re-render to update colors without losing state
+  const checked = [...document.querySelectorAll('#f-category-picker input:checked')].map(i=>i.value);
+  renderCategoryPicker(checked);
+}
+
+function addCustomCategory() {
+  const name = prompt('New category name:');
+  if (!name || !name.trim()) return;
+  const current = [...document.querySelectorAll('#f-category-picker input:checked')].map(i=>i.value);
+  renderCategoryPicker([...current, name.trim()]);
+}
+
+function getSelectedCategories() {
+  return [...document.querySelectorAll('#f-category-picker input:checked')].map(i=>i.value);
+}
+
+// ===== RECIPE GRID =====
+
+let activeFilter = 'All';
+function renderFilterChips() {
+  const cats = ['All', ...allCategories()];
+  document.getElementById('filterChips').innerHTML = cats.map(c =>
+    `<div class="chip ${c===activeFilter?'active':''}" onclick="setFilter('${c}')">${c}</div>`
+  ).join('');
+}
+
+function setFilter(c) { activeFilter = c; renderGrid(); }
+
+function renderGrid() {
+  renderFilterChips();
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  let list = recipes.slice().sort((a,b)=>a.title.localeCompare(b.title));
+  if (activeFilter !== 'All') list = list.filter(r=>(r.categories||[]).includes(activeFilter));
+  if (q) list = list.filter(r => {
+    const text = r.title + ' ' + (r.description||'') + ' ' + flatIngredients(r).join(' ');
+    return text.toLowerCase().includes(q);
+  });
+  const grid = document.getElementById('recipeGrid');
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="icon">🥣</div><p>${recipes.length?'No matches found':'No recipes yet — import or add one!'}</p></div>`;
+    return;
+  }
+  grid.innerHTML = list.map(r => `
+    <div class="card" onclick="openDetail('${r.id}')">
+      <div style="position:relative">
+        <img src="${r.image||''}" alt="${r.title}" onerror="this.style.display='none'" style="width:100%;height:120px;object-fit:cover;background:#f0f0f0;display:${r.image?'block':'none'}">
+        ${!r.image ? `<div style="width:100%;height:120px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:2rem">🍽️</div>` : ''}
+        <button onclick="event.stopPropagation();quickEditImage('${r.id}')" style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.5);border:none;color:#fff;border-radius:12px;padding:3px 8px;font-size:.7rem;cursor:pointer">📷</button>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${r.title}</div>
+        <div class="card-meta">${r.totalTime||r.activeTime||''}</div>
+        ${(r.categories||[]).map(c=>`<span class="card-tag">${c}</span>`).join(' ')}
+      </div>
+    </div>`).join('');
+}
+
+// ===== RECIPE DETAIL =====
+function flatIngredients(r) {
+  return (r.ingredients||[]).flatMap(g => g.items || [g]);
+}
+
+function openDetail(id) {
+  const r = recipes.find(x=>x.id===id);
+  if (!r) return;
+  currentRecipeId = id;
+  baseServings = parseServings(r.yield);
+  document.getElementById('detailTitle').textContent = r.title;
+  const img = document.getElementById('detailImg');
+  img.src = r.image||''; img.style.display = r.image ? 'block' : 'none';
+  document.getElementById('detailMeta').innerHTML = [
+    r.yield ? `<strong>Yield:</strong> ${r.yield}` : '',
+    r.activeTime ? `<strong>Active:</strong> ${r.activeTime}` : '',
+    r.totalTime ? `<strong>Total:</strong> ${r.totalTime}` : '',
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  document.getElementById('detailDesc').textContent = r.description || '';
+  document.getElementById('scalerInput').value = 1;
+  document.getElementById('scalerLabel').textContent = r.yield ? `(original: ${r.yield})` : '';
+  renderScaledIngredients();
+  // instructions
+  document.getElementById('detailInstructions').innerHTML = (r.instructions||[]).map((s,i)=>
+    `<div class="instruction-item"><div class="step-num">${i+1}</div><div>${s}</div></div>`
+  ).join('');
+  // notes
+  const notes = (r.notes||[]).filter(Boolean);
+  document.getElementById('detailNotesWrap').style.display = notes.length ? 'block' : 'none';
+  document.getElementById('detailNotes').innerHTML = notes.map(n=>`<div class="ingredient-item">${n}</div>`).join('');
+  document.getElementById('detailSource').innerHTML = r.url ? `<a href="${r.url}" target="_blank" style="color:var(--green)">View original recipe →</a>` : '';
+  openModal('detailOverlay');
+}
+
+function parseServings(yieldStr) {
+  if (!yieldStr) return 1;
+  const m = yieldStr.match(/[\d.]+/);
+  return m ? parseFloat(m[0]) : 1;
+}
+
+function renderScaledIngredients() {
+  const r = recipes.find(x=>x.id===currentRecipeId); if (!r) return;
+  const scale = parseFloat(document.getElementById('scalerInput').value) || 1;
+  const factor = baseServings > 0 ? scale / baseServings : scale;
+  let html = '';
+  (r.ingredients||[]).forEach(g => {
+    if (g.group) html += `<div class="ingredient-group">${g.group}</div>`;
+    (g.items||[g]).forEach(item => {
+      html += `<div class="ingredient-item">${scaleIngredient(item, factor)}</div>`;
+    });
+  });
+  document.getElementById('detailIngredients').innerHTML = html || '<div class="ingredient-item">No ingredients listed</div>';
+}
+
+function scaleIngredient(text, factor) {
+  if (factor === 1) return text;
+  return text.replace(/\d+\/\d+|\d+\.\d+|\d+/g, match => {
+    const num = eval(match);
+    const scaled = num * factor;
+    if (Number.isInteger(scaled)) return scaled;
+    // Convert to nice fractions for small numbers
+    const frac = toFraction(scaled);
+    return frac || scaled.toFixed(2).replace(/\.?0+$/,'');
+  });
+}
+
+function toFraction(n) {
+  const denoms = [2,3,4,8];
+  for (const d of denoms) {
+    const rounded = Math.round(n * d) / d;
+    if (Math.abs(rounded - n) < 0.02) {
+      const whole = Math.floor(rounded);
+      const num = Math.round((rounded - whole) * d);
+      if (num === 0) return whole.toString();
+      const fracs = {[`1/${d}`]:'¼',['1/2']:'½',['3/4']:'¾',['1/3']:'⅓',['2/3']:'⅔',['1/8']:'⅛',['3/8']:'⅜',['5/8']:'⅝',['7/8']:'⅞'};
+      const key = `${num}/${d}`;
+      const sym = fracs[key] || key;
+      return whole > 0 ? `${whole} ${sym}` : sym;
+    }
+  }
+  return null;
+}
+
+// ===== ADD TO SHOPPING LIST =====
+function addCurrentToShoppingList() {
+  const r = recipes.find(x=>x.id===currentRecipeId); if (!r) return;
+  const scale = parseFloat(document.getElementById('scalerInput').value) || 1;
+  const factor = baseServings > 0 ? scale / baseServings : scale;
+  const items = flatIngredients(r).map(item => scaleIngredient(item, factor));
+  items.forEach(item => {
+    if (!shoppingList.find(s=>s.text===item && s.recipeId===r.id))
+      shoppingList.push({id: uid(), text: item, recipeId: r.id, recipe: r.title, checked: false});
+  });
+  save();
+  toast(`Added ${items.length} ingredients from "${r.title}"`);
+}
+
+function renderShoppingList() {
+  const el = document.getElementById('shoppingListEl');
+  if (!shoppingList.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">🛒</div><p>Your shopping list is empty.<br>Add ingredients from a recipe!</p></div>`;
+    return;
+  }
+  // Group by recipe
+  const byRecipe = {};
+  shoppingList.forEach(s => {
+    const k = s.recipe || 'Other';
+    if (!byRecipe[k]) byRecipe[k] = [];
+    byRecipe[k].push(s);
+  });
+  el.innerHTML = Object.entries(byRecipe).map(([recipe, items]) => `
+    <div class="shopping-group">${recipe}</div>
+    ${items.map(s=>`
+      <div class="shopping-item ${s.checked?'checked':''}" id="si-${s.id}">
+        <input type="checkbox" ${s.checked?'checked':''} onchange="toggleShoppingItem('${s.id}')">
+        <label onclick="toggleShoppingItem('${s.id}')">${s.text}</label>
+      </div>`).join('')}
+  `).join('');
+}
+
+function toggleShoppingItem(id) {
+  const s = shoppingList.find(x=>x.id===id); if (!s) return;
+  s.checked = !s.checked; save(); renderShoppingList();
+}
+
+function clearShoppingList() {
+  if (confirm('Clear shopping list?')) { shoppingList = []; save(); renderShoppingList(); }
+}
+
+function copyShoppingList() {
+  const text = shoppingList.map(s=>(s.checked?'✓ ':'')+s.text).join('\n');
+  navigator.clipboard.writeText(text).then(()=>toast('Copied to clipboard!'));
+}
+
+// ===== MEAL PLANNER =====
+function renderPlanner() {
+  const grid = document.getElementById('weekGrid');
+  grid.innerHTML = DAYS.map(day => `
+    <div class="day-col">
+      <div class="day-header">${day.slice(0,3)}</div>
+      <div class="day-slots" id="day-${day}">
+        ${(mealPlan[day]||[]).map(m=>`
+          <div class="meal-slot">${m.title.slice(0,20)}<button class="remove-meal" onclick="removeMeal('${day}','${m.id}')">×</button></div>
+        `).join('')}
+        <div class="add-to-plan" onclick="openPlannerPicker('${day}')">+ add</div>
+      </div>
+    </div>`).join('');
+}
+
+let plannerTargetDay = null;
+function addCurrentToPlanner() {
+  closeModal('detailOverlay');
+  document.getElementById('plannerOverlayTitle').textContent = 'Add to Meal Planner';
+  document.getElementById('dayPickerSection').style.display = 'block';
+  document.getElementById('recipePickerSection').style.display = 'none';
+  openModal('plannerOverlay');
+  document.getElementById('dayPickerBtns').innerHTML =
+    DAYS.map(d=>`<button class="btn btn-outline" onclick="addToPlanDay('${d}')">${d.slice(0,3)}</button>`).join('');
+}
+
+function openPlannerPicker(day) {
+  plannerTargetDay = day;
+  document.getElementById('plannerOverlayTitle').textContent = `Add to ${day}`;
+  document.getElementById('dayPickerSection').style.display = 'none';
+  document.getElementById('recipePickerSection').style.display = 'block';
+  document.getElementById('plannerSearch').value = '';
+  openModal('plannerOverlay');
+  renderPlannerList(recipes);
+}
+
+function filterPlannerPicker() {
+  const q = document.getElementById('plannerSearch').value.toLowerCase();
+  renderPlannerList(q ? recipes.filter(r => r.title.toLowerCase().includes(q)) : recipes);
+}
+
+function renderPlannerList(list) {
+  document.getElementById('plannerRecipeList').innerHTML = list.map(r => `
+    <div onclick="addToPlanDay('${plannerTargetDay}','${r.id}')"
+      style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;cursor:pointer;border:1px solid var(--border);background:#fff;transition:background .15s"
+      onmouseover="this.style.background='var(--green-light)'" onmouseout="this.style.background='#fff'">
+      ${r.image ? `<img src="${r.image}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0">` : `<div style="width:40px;height:40px;border-radius:6px;background:#f0f0f0;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem">🍽️</div>`}
+      <span style="font-size:.9rem;font-weight:500">${r.title}</span>
+    </div>`).join('') || '<p style="color:var(--muted);font-size:.85rem;text-align:center;padding:20px">No recipes found</p>';
+}
+
+function addToPlanDay(day, id) {
+  const rid = id || currentRecipeId;
+  const r = recipes.find(x=>x.id===rid); if (!r) return;
+  if (!mealPlan[day]) mealPlan[day] = [];
+  mealPlan[day].push({id: uid(), recipeId: r.id, title: r.title});
+  save(); closeModal('plannerOverlay'); renderPlanner(); toast(`Added to ${day}`);
+}
+
+function removeMeal(day, id) {
+  mealPlan[day] = (mealPlan[day]||[]).filter(m=>m.id!==id);
+  save(); renderPlanner();
+}
+
+function clearWeek() {
+  if (confirm('Clear meal plan?')) { mealPlan = {}; save(); renderPlanner(); }
+}
+
+function planToShoppingList() {
+  let count = 0;
+  Object.values(mealPlan).flat().forEach(m => {
+    const r = recipes.find(x=>x.id===m.recipeId); if (!r) return;
+    flatIngredients(r).forEach(item => {
+      if (!shoppingList.find(s=>s.text===item && s.recipeId===r.id)) {
+        shoppingList.push({id:uid(), text:item, recipeId:r.id, recipe:r.title, checked:false});
+        count++;
+      }
+    });
+  });
+  save();
+  toast(`Added ${count} items to shopping list`);
+  showView('shopping'); document.querySelectorAll('.nav-btn')[2].click();
+}
+
+// ===== ADD / EDIT RECIPE =====
+function openAddModal() {
+  editingId = null;
+  document.getElementById('editTitle').textContent = 'Add Recipe';
+  ['title','yield','active','total','desc','ingredients','instructions','notes','url','image'].forEach(f=>document.getElementById('f-'+f).value='');
+  renderCategoryPicker([]);
+  openModal('editOverlay');
+}
+
+function editCurrentRecipe() {
+  const r = recipes.find(x=>x.id===currentRecipeId); if (!r) return;
+  editingId = r.id;
+  document.getElementById('editTitle').textContent = 'Edit Recipe';
+  document.getElementById('f-title').value = r.title||'';
+  renderCategoryPicker(r.categories||[]);
+  document.getElementById('f-yield').value = r.yield||'';
+  document.getElementById('f-active').value = r.activeTime||'';
+  document.getElementById('f-total').value = r.totalTime||'';
+  document.getElementById('f-desc').value = r.description||'';
+  document.getElementById('f-ingredients').value = (r.ingredients||[]).map(g=>(g.group?'# '+g.group+'\n':'')+g.items.join('\n')).join('\n');
+  document.getElementById('f-instructions').value = (r.instructions||[]).join('\n');
+  document.getElementById('f-notes').value = (r.notes||[]).join('\n');
+  document.getElementById('f-url').value = r.url||'';
+  document.getElementById('f-image').value = r.image||'';
+  closeModal('detailOverlay');
+  openModal('editOverlay');
+}
+
+function saveRecipe() {
+  const title = document.getElementById('f-title').value.trim();
+  if (!title) { alert('Title is required'); return; }
+  const ingredientsRaw = document.getElementById('f-ingredients').value.trim().split('\n').filter(Boolean);
+  const ingredients = parseIngredientLines(ingredientsRaw);
+  const rec = {
+    id: editingId || uid(),
+    title,
+    categories: getSelectedCategories(),
+    yield: document.getElementById('f-yield').value.trim(),
+    activeTime: document.getElementById('f-active').value.trim(),
+    totalTime: document.getElementById('f-total').value.trim(),
+    description: document.getElementById('f-desc').value.trim(),
+    ingredients,
+    instructions: document.getElementById('f-instructions').value.trim().split('\n').filter(Boolean),
+    notes: document.getElementById('f-notes').value.trim().split('\n').filter(Boolean),
+    url: document.getElementById('f-url').value.trim(),
+    image: document.getElementById('f-image').value.trim(),
+    dateAdded: editingId ? (recipes.find(r=>r.id===editingId)||{}).dateAdded : Date.now()
+  };
+  if (editingId) {
+    const idx = recipes.findIndex(r=>r.id===editingId);
+    recipes[idx] = rec;
+  } else {
+    recipes.push(rec);
+  }
+  save(); closeModal('editOverlay'); renderGrid();
+  toast(editingId ? 'Recipe updated!' : 'Recipe added!');
+}
+
+function deleteCurrentRecipe() {
+  const r = recipes.find(x=>x.id===currentRecipeId); if (!r) return;
+  if (!confirm(`Delete "${r.title}"?`)) return;
+  recipes = recipes.filter(x=>x.id!==currentRecipeId);
+  save(); closeModal('detailOverlay'); renderGrid(); toast('Recipe deleted');
+}
+
+function parseIngredientLines(lines) {
+  const groups = []; let current = {group:null, items:[]};
+  lines.forEach(line => {
+    if (line.startsWith('#')) { if (current.items.length||current.group) groups.push(current); current={group:line.slice(1).trim(), items:[]}; }
+    else current.items.push(line);
+  });
+  if (current.items.length||current.group) groups.push(current);
+  return groups;
+}
+
+// ===== ZIP PARSER — reads central directory for reliable sizes =====
+async function parseZip(buffer) {
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  const files = {};
+
+  // 1. Find End of Central Directory record (scan backwards from end)
+  let eocdOffset = -1;
+  for (let i = bytes.length - 22; i >= 0; i--) {
+    if (view.getUint32(i, true) === 0x06054b50) { eocdOffset = i; break; }
+  }
+  if (eocdOffset < 0) { console.error('ZIP: no EOCD'); return files; }
+
+  const cdOffset = view.getUint32(eocdOffset + 16, true);
+  const cdCount  = view.getUint16(eocdOffset + 10, true);
+
+  // 2. Walk central directory
+  let cdPos = cdOffset;
+  for (let i = 0; i < cdCount; i++) {
+    if (view.getUint32(cdPos, true) !== 0x02014b50) break;
+    const compression    = view.getUint16(cdPos + 10, true);
+    const compressedSize = view.getUint32(cdPos + 20, true);
+    const filenameLen    = view.getUint16(cdPos + 28, true);
+    const extraLen       = view.getUint16(cdPos + 30, true);
+    const commentLen     = view.getUint16(cdPos + 32, true);
+    const localOffset    = view.getUint32(cdPos + 42, true);
+    const filename = new TextDecoder().decode(bytes.slice(cdPos + 46, cdPos + 46 + filenameLen));
+    cdPos += 46 + filenameLen + extraLen + commentLen;
+
+    // 3. Jump to local file header to find data start
+    const localExtraLen = view.getUint16(localOffset + 28, true);
+    const localFilenameLen = view.getUint16(localOffset + 26, true);
+    const dataStart = localOffset + 30 + localFilenameLen + localExtraLen;
+    const compressedData = bytes.slice(dataStart, dataStart + compressedSize);
+
+    try {
+      if (compression === 0) {
+        files[filename] = compressedData;
+      } else if (compression === 8) {
+        files[filename] = await decompressDeflate(compressedData);
+      }
+    } catch(e) { console.warn('ZIP: failed to decompress', filename, e); }
+  }
+  return files;
+}
+
+async function decompressDeflate(data) {
+  const ds = new DecompressionStream('deflate-raw');
+  const writer = ds.writable.getWriter();
+  const reader = ds.readable.getReader();
+  writer.write(data);
+  writer.close();
+  const chunks = [];
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const total = chunks.reduce((s,c)=>s+c.length, 0);
+  const out = new Uint8Array(total);
+  let pos = 0;
+  chunks.forEach(c=>{out.set(c,pos);pos+=c.length;});
+  return out;
+}
+
+function uint8ToBase64(bytes) {
+  let binary = '';
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize)
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  return btoa(binary);
+}
+
+function mimeFromFilename(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  return {jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp'}[ext] || 'image/jpeg';
+}
+
+const yield1 = () => new Promise(r => setTimeout(r, 0));
+
+// ===== IMPORT: COPY ME THAT =====
+async function importCopyMeThatFile(file) {
+  if (!file) return;
+  document.getElementById('cmtProgress').style.display='block';
+  document.getElementById('cmtStatus').textContent = 'Reading file…';
+
+  let htmlText, imageMap = {};
+
+  if (file.name.endsWith('.zip')) {
+    document.getElementById('cmtStatus').textContent = 'Extracting zip…';
+    const buffer = await file.arrayBuffer();
+    const zipFiles = await parseZip(buffer);
+
+    // Find recipes.html
+    const htmlKey = Object.keys(zipFiles).find(k => k.endsWith('recipes.html'));
+    if (!htmlKey) { document.getElementById('cmtStatus').textContent = '❌ Could not find recipes.html in zip'; return; }
+    htmlText = new TextDecoder().decode(zipFiles[htmlKey]);
+
+    // Build image map in chunks — yield every 5 images so browser stays responsive
+    const imageEntries = Object.entries(zipFiles).filter(([p]) => /\.(jpg|jpeg|png|gif|webp)$/i.test(p));
+    let imgDone = 0;
+    for (const [path, data] of imageEntries) {
+      const fname = path.split('/').pop();
+      const mime = mimeFromFilename(fname);
+      const b64 = `data:${mime};base64,${uint8ToBase64(data)}`;
+      imageMap[fname] = b64;
+      imageMap['images/' + fname] = b64;
+      imgDone++;
+      if (imgDone % 5 === 0) {
+        document.getElementById('cmtStatus').textContent = `Processing images… ${imgDone}/${imageEntries.length}`;
+        document.getElementById('cmtBar').style.width = Math.round((imgDone / imageEntries.length) * 60) + '%';
+        await yield1();
+      }
+    }
+  } else {
+    htmlText = await file.text();
+  }
+
+  document.getElementById('cmtStatus').textContent = 'Parsing recipes…';
+  document.getElementById('cmtBar').style.width = '65%';
+  await yield1();
+  await importCopyMeThat(htmlText, imageMap);
+}
+
+async function importCopyMeThat(htmlText, imageMap = {}) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlText, 'text/html');
+  const divs = doc.querySelectorAll('div.recipe');
+  let count = 0;
+  for (let i = 0; i < divs.length; i++) {
+    // Yield every recipe so phone stays responsive; save every 10 so progress isn't lost
+    document.getElementById('cmtBar').style.width = Math.round(65 + (i/divs.length)*35)+'%';
+    document.getElementById('cmtStatus').textContent = `Parsing recipes… ${i+1}/${divs.length}`;
+    await yield1();
+
+    try {
+      const div = divs[i];
+      const title = div.querySelector('#name')?.textContent?.trim();
+      if (!title) continue;
+      const url = div.querySelector('#original_link')?.getAttribute('href') || '';
+      // Resolve image
+      let image = '';
+      const imgEl = div.querySelector('.recipeImage');
+      if (imgEl) {
+        const rawSrc = imgEl.getAttribute('src') || '';
+        const fname = rawSrc.split('/').pop();
+        image = imageMap[rawSrc] || imageMap['images/'+fname] || imageMap[fname] || '';
+      }
+      const existing = recipes.find(r=>r.title===title);
+      if (existing) {
+        if (image && !existing.image) { existing.image = image; count++; }
+        continue;
+      }
+      // ingredients
+      const ingredientEls = div.querySelectorAll('#recipeIngredients > *');
+      const groups = []; let cur = {group:null, items:[]};
+      ingredientEls.forEach(el => {
+        if (el.classList.contains('recipeIngredient_subheader')) {
+          if (cur.items.length||cur.group) groups.push(cur);
+          cur = {group: el.textContent.trim(), items:[]};
+        } else if (el.tagName==='LI' || el.classList.contains('recipeIngredient')) {
+          const t = el.textContent.trim();
+          if (t && !el.classList.contains('recipeIngredient_subheader')) cur.items.push(t);
+        }
+      });
+      if (cur.items.length||cur.group) groups.push(cur);
+      const instructions = [...div.querySelectorAll('.instruction,.instruction_next')].map(e=>e.textContent.trim()).filter(Boolean);
+      const notes = [...div.querySelectorAll('.recipeNote')].map(e=>e.textContent.trim()).filter(Boolean);
+      recipes.push({id:uid(), title, url, image, categories:[], ingredients:groups, instructions, notes, dateAdded:Date.now()});
+      count++;
+      // Save progress every 10 recipes so a crash doesn't lose everything
+      if (count % 10 === 0) save(true);
+    } catch(e) {
+      console.warn(`Skipped recipe ${i} due to error:`, e);
+    }
+  }
+  document.getElementById('cmtBar').style.width='100%';
+  document.getElementById('cmtStatus').textContent = 'Saving recipes…';
+  await yield1();
+  save(true);
+  document.getElementById('cmtStatus').textContent = 'Saving images…';
+  await persistImages();
+  renderGrid();
+  const imgCount = Object.keys(imageMap).length / 2;
+  document.getElementById('cmtStatus').textContent = `✅ Done! ${count} recipes added/updated${imgCount>0?' with images':''}. Use ⋯ → Save to Drive to sync.`;
+  toast(`Copy Me That: ${count} recipes added/updated`);
+}
+
+// ===== FETCH URL IMAGE → BASE64 =====
+async function fetchImageAsBase64(url) {
+  if (!url || url.startsWith('data:')) return url;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return url;
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch(e) {
+    console.warn('Could not fetch image:', url, e.message);
+    return url; // fall back to original URL
+  }
+}
+
+// ===== IMPORT: PEPPERPLATE =====
+async function importPepperplate(files) {
+  if (!files.length) return;
+  document.getElementById('ppProgress').style.display='block';
+  let count = 0;
+  for (let i = 0; i < files.length; i++) {
+    document.getElementById('ppBar').style.width = Math.round((i/files.length)*100)+'%';
+    document.getElementById('ppStatus').textContent = `Processing ${i+1}/${files.length}…`;
+    const text = await files[i].text();
+    const r = parsePepperplateTxt(text);
+    if (!r) continue;
+    if (recipes.find(x=>x.title===r.title)) continue;
+    // Try to embed image as base64 so it works in the desktop sidebar
+    if (r.image && !r.image.startsWith('data:')) {
+      r.image = await fetchImageAsBase64(r.image);
+    }
+    recipes.push(r); count++;
+  }
+  document.getElementById('ppBar').style.width='100%';
+  save(); renderGrid();
+  document.getElementById('ppStatus').textContent = `✅ Imported ${count} recipes!`;
+  toast(`Imported ${count} recipes from Pepperplate`);
+}
+
+// ===== REMOVE DUPLICATES =====
+function removeDuplicates() {
+  closeBackupMenu();
+  const before = recipes.length;
+  const seen = new Map();
+  // For each title, keep the copy with the most data (prefer one with image)
+  recipes.forEach(r => {
+    const key = r.title.trim().toLowerCase();
+    const existing = seen.get(key);
+    if (!existing) { seen.set(key, r); return; }
+    // Keep whichever has an image; if tied, keep the one with more ingredients
+    const existingScore = (existing.image ? 10 : 0) + (existing.ingredients?.flatMap(g=>g.items||[]).length || 0);
+    const newScore = (r.image ? 10 : 0) + (r.ingredients?.flatMap(g=>g.items||[]).length || 0);
+    if (newScore > existingScore) seen.set(key, r);
+  });
+  recipes = Array.from(seen.values());
+  const removed = before - recipes.length;
+  save(); renderGrid();
+  toast(`Removed ${removed} duplicate${removed !== 1 ? 's' : ''} — ${recipes.length} recipes remain`);
+}
+
+// ===== FIX MISSING IMAGES (embed URL images as base64) =====
+async function fixMissingImages() {
+  closeBackupMenu();
+  const toFix = recipes.filter(r => r.image && !r.image.startsWith('data:'));
+  if (!toFix.length) { toast('No URL images to fix!'); return; }
+  const syncEl = document.getElementById('syncStatus');
+  syncEl.style.display = 'block';
+  let fixed = 0;
+  for (let i = 0; i < toFix.length; i++) {
+    syncEl.textContent = `🔄 Fetching images… ${i+1}/${toFix.length}`;
+    const r = recipes.find(x => x.id === toFix[i].id);
+    if (!r) continue;
+    const embedded = await fetchImageAsBase64(r.image);
+    if (embedded && embedded.startsWith('data:')) { r.image = embedded; fixed++; }
+  }
+  save(); renderGrid();
+  syncEl.textContent = `✅ Embedded ${fixed} images!`;
+  setTimeout(() => syncEl.style.display = 'none', 3000);
+}
+
+function parsePepperplateTxt(text) {
+  const lines = text.split('\n');
+  const get = key => { const l = lines.find(x=>x.startsWith(key+':')); return l ? l.slice(key.length+1).trim() : ''; };
+  const title = get('Title'); if (!title) return null;
+  // sections
+  let section = '', ingLines = [], instLines = [], noteLines = [];
+  lines.forEach(line => {
+    if (line.startsWith('Ingredients:')) { section='ing'; return; }
+    if (line.startsWith('Instructions:')) { section='inst'; return; }
+    if (line.startsWith('Notes:')) { section='notes'; return; }
+    if (/^[A-Z][a-z]+:/.test(line) && section) { section=''; return; }
+    const t = line.replace(/^\t/,'').trim();
+    if (!t) return;
+    if (section==='ing') ingLines.push(t);
+    else if (section==='inst') instLines.push(t);
+    else if (section==='notes') noteLines.push(t);
+  });
+  return {
+    id: uid(),
+    title,
+    description: get('Description'),
+    url: get('Original URL'),
+    image: get('Image'),
+    yield: get('Yield'),
+    activeTime: get('Active'),
+    totalTime: get('Total'),
+    categories: get('Categories') ? [get('Categories')] : [],
+    ingredients: [{group:null, items: ingLines}],
+    instructions: instLines,
+    notes: noteLines,
+    dateAdded: Date.now()
+  };
+}
+
+// ===== IMPORT: PASTE (AI) =====
+async function parsePastedRecipe() {
+  const text = document.getElementById('pasteText').value.trim();
+  if (!text) { alert('Please paste some recipe text first'); return; }
+  document.getElementById('pasteStatus').textContent = '🤖 Parsing with AI…';
+  try {
+    const result = await window.cowork.askClaude(
+      `Parse this recipe text into structured JSON with these exact fields:
+      title (string), description (string), yield (string like "4 servings"),
+      activeTime (string like "15 mins"), totalTime (string like "45 mins"),
+      categories (array of strings like ["main","dinner"]),
+      ingredients (array of objects: {group: string|null, items: [string]}),
+      instructions (array of strings, one step each),
+      notes (array of strings),
+      url (string, empty if not found).
+      Return ONLY valid JSON, no markdown or explanation.`,
+      [text]
+    );
+    const json = JSON.parse(result.replace(/```json\n?|\n?```/g,'').trim());
+    json.id = uid(); json.image = ''; json.dateAdded = Date.now();
+    if (!json.ingredients || !Array.isArray(json.ingredients)) json.ingredients = [];
+    // normalize ingredient format
+    json.ingredients = json.ingredients.map(g => typeof g === 'string' ? {group:null,items:[g]} : (g.items ? g : {group:null,items:[g]}));
+    // pre-fill edit form
+    editingId = null;
+    document.getElementById('editTitle').textContent = 'Review Parsed Recipe';
+    document.getElementById('f-title').value = json.title||'';
+    document.getElementById('f-category').value = (json.categories||[]).join(', ');
+    document.getElementById('f-yield').value = json.yield||'';
+    document.getElementById('f-active').value = json.activeTime||'';
+    document.getElementById('f-total').value = json.totalTime||'';
+    document.getElementById('f-desc').value = json.description||'';
+    document.getElementById('f-ingredients').value = json.ingredients.map(g=>(g.group?'# '+g.group+'\n':'')+g.items.join('\n')).join('\n');
+    document.getElementById('f-instructions').value = (json.instructions||[]).join('\n');
+    document.getElementById('f-notes').value = (json.notes||[]).join('\n');
+    document.getElementById('f-url').value = json.url||'';
+    document.getElementById('f-image').value = '';
+    closeModal('importOverlay');
+    openModal('editOverlay');
+    document.getElementById('pasteStatus').textContent = '';
+  } catch(e) {
+    document.getElementById('pasteStatus').textContent = '❌ Parse failed — try again or edit manually';
+    console.error(e);
+  }
+}
+
+// ===== IMPORT: URL =====
+async function importFromUrl() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) { alert('Please enter a URL'); return; }
+  document.getElementById('urlStatus').textContent = '🤖 Fetching recipe…';
+  try {
+    const result = await window.cowork.askClaude(
+      `Fetch this recipe URL and return the recipe as JSON with fields: title, description, yield, activeTime, totalTime, categories (array), ingredients (array of {group,items}), instructions (array), notes (array), url, image.
+      URL: ${url}
+      If you cannot fetch it, return {"error":"cannot fetch"}.
+      Return ONLY valid JSON.`,
+      []
+    );
+    const json = JSON.parse(result.replace(/```json\n?|\n?```/g,'').trim());
+    if (json.error) throw new Error(json.error);
+    json.id = uid(); json.dateAdded = Date.now();
+    if (!json.image) json.image = '';
+    json.ingredients = (json.ingredients||[]).map(g => typeof g==='string'?{group:null,items:[g]}:(g.items?g:{group:null,items:[g]}));
+    editingId = null;
+    document.getElementById('editTitle').textContent = 'Review Imported Recipe';
+    document.getElementById('f-title').value = json.title||'';
+    document.getElementById('f-category').value = (json.categories||[]).join(', ');
+    document.getElementById('f-yield').value = json.yield||'';
+    document.getElementById('f-active').value = json.activeTime||'';
+    document.getElementById('f-total').value = json.totalTime||'';
+    document.getElementById('f-desc').value = json.description||'';
+    document.getElementById('f-ingredients').value = json.ingredients.map(g=>(g.group?'# '+g.group+'\n':'')+g.items.join('\n')).join('\n');
+    document.getElementById('f-instructions').value = (json.instructions||[]).join('\n');
+    document.getElementById('f-notes').value = (json.notes||[]).join('\n');
+    document.getElementById('f-url').value = json.url||url;
+    document.getElementById('f-image').value = json.image||'';
+    closeModal('importOverlay');
+    openModal('editOverlay');
+    document.getElementById('urlStatus').textContent = '';
+  } catch(e) {
+    document.getElementById('urlStatus').textContent = '❌ Could not fetch recipe. Try the Paste Text tab instead.';
+  }
+}
+
+// ===== MODAL HELPERS =====
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeOnBg(e, id) { if (e.target.id===id) closeModal(id); }
+
+function openImportModal() { switchImportTab('copymethat'); openModal('importOverlay'); }
+
+function switchImportTab(tab) {
+  document.querySelectorAll('.import-tab').forEach((t,i)=>{
+    const tabs=['copymethat','pepperplate','paste','url'];
+    t.classList.toggle('active', tabs[i]===tab);
+  });
+  document.querySelectorAll('.import-section').forEach(s=>s.classList.remove('active'));
+  document.getElementById('import-'+tab).classList.add('active');
+}
+
+// ===== TOAST =====
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+// ===== COMPRESS / DECOMPRESS =====
+async function compressData(str) {
+  const bytes = new TextEncoder().encode(str);
+  const cs = new CompressionStream('gzip');
+  const writer = cs.writable.getWriter();
+  const reader = cs.readable.getReader();
+  writer.write(bytes);
+  writer.close();
+  const chunks = [];
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const total = chunks.reduce((s,c)=>s+c.length, 0);
+  const out = new Uint8Array(total);
+  let pos = 0;
+  chunks.forEach(c=>{out.set(c,pos);pos+=c.length;});
+  // base64url encode
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < out.length; i += chunk)
+    binary += String.fromCharCode(...out.subarray(i, i + chunk));
+  return btoa(binary).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+async function decompressData(b64url) {
+  const b64 = b64url.replace(/-/g,'+').replace(/_/g,'/');
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const ds = new DecompressionStream('gzip');
+  const writer = ds.writable.getWriter();
+  const reader = ds.readable.getReader();
+  writer.write(bytes);
+  writer.close();
+  const chunks = [];
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const total = chunks.reduce((s,c)=>s+c.length, 0);
+  const out = new Uint8Array(total);
+  let pos = 0;
+  chunks.forEach(c=>{out.set(c,pos);pos+=c.length;});
+  return new TextDecoder().decode(out);
+}
+
+// ===== SYNC LINK (desktop → phone via URL hash) =====
+let _builtSyncUrl = '';
+
+function generateSyncLink() {
+  closeBackupMenu();
+  // Reset modal to step 1
+  document.getElementById('syncLinkStep1').style.display = 'block';
+  document.getElementById('syncLinkStep2').style.display = 'none';
+  document.getElementById('syncLinkBuildStatus').textContent = '';
+  // Pre-fill saved URL
+  const saved = localStorage.getItem('netlifyUrl') || '';
+  document.getElementById('netlifyUrlInput').value = saved;
+  openModal('syncLinkOverlay');
+}
+
+async function buildSyncLink() {
+  const netlifyUrl = document.getElementById('netlifyUrlInput').value.trim().replace(/\/+$/, '');
+  if (!netlifyUrl || !netlifyUrl.startsWith('http')) {
+    document.getElementById('syncLinkBuildStatus').textContent = '⚠️ Please enter a valid URL starting with https://';
+    return;
+  }
+  localStorage.setItem('netlifyUrl', netlifyUrl);
+  document.getElementById('syncLinkBuildStatus').textContent = '⏳ Compressing recipes…';
+  try {
+    const payload = JSON.stringify({ recipes: slimRecipes(recipes), mealPlan, shoppingList, savedAt: new Date().toISOString() });
+    const compressed = await compressData(payload);
+    _builtSyncUrl = `${netlifyUrl}/#sync=${compressed}`;
+    document.getElementById('syncLinkOutput').value = _builtSyncUrl;
+    document.getElementById('syncLinkBuildStatus').textContent = '';
+    document.getElementById('syncLinkStep1').style.display = 'none';
+    document.getElementById('syncLinkStep2').style.display = 'block';
+  } catch(e) {
+    document.getElementById('syncLinkBuildStatus').textContent = '❌ Failed: ' + (e.message||'');
+    console.error('Build sync link error:', e);
+  }
+}
+
+function copySyncLink() {
+  if (!_builtSyncUrl) return;
+  navigator.clipboard.writeText(_builtSyncUrl).then(() => toast('✅ Link copied!')).catch(() => {
+    document.getElementById('syncLinkOutput').select();
+    document.execCommand('copy');
+    toast('✅ Link copied!');
+  });
+}
+
+function emailSyncLink() {
+  if (!_builtSyncUrl) return;
+  const subject = encodeURIComponent('My Recipe Box — tap to sync');
+  const body = encodeURIComponent('Tap the link below on your phone to load your recipes:\n\n' + _builtSyncUrl + '\n\nRecipes will import automatically when it opens.');
+  const a = document.createElement('a');
+  a.href = `mailto:ejallen78@gmail.com?subject=${subject}&body=${body}`;
+  a.click();
+}
+
+async function checkSyncFromUrl() {
+  const hash = window.location.hash;
+  // Ignore Google OAuth redirects and anything that isn't a sync link
+  if (!hash.startsWith('#sync=')) return;
+  const compressed = hash.slice(6);
+  if (!compressed || compressed.length < 20) return;
+  // Clear the hash immediately so it doesn't re-import on refresh
+  history.replaceState(null, '', window.location.pathname);
+  const syncEl = document.getElementById('syncStatus');
+  syncEl.style.display = 'block';
+  syncEl.textContent = '📥 Importing recipes from sync link…';
+  try {
+    const json = await decompressData(compressed);
+    const data = JSON.parse(json);
+    if (!Array.isArray(data.recipes)) throw new Error('Invalid data');
+    const mergeCount = data.recipes.filter(r => !recipes.find(x=>x.id===r.id)).length;
+    data.recipes.forEach(r => {
+      const idx = recipes.findIndex(x=>x.id===r.id);
+      if (idx >= 0) recipes[idx] = r; else recipes.push(r);
+    });
+    if (data.mealPlan) mealPlan = data.mealPlan;
+    if (data.shoppingList) shoppingList = data.shoppingList;
+    save(true); renderGrid();
+    syncEl.textContent = `✅ ${recipes.length} recipes loaded (${mergeCount} new)!`;
+    setTimeout(() => syncEl.style.display = 'none', 3000);
+  } catch(e) {
+    syncEl.textContent = '❌ Sync failed: ' + (e.message||'');
+    setTimeout(() => syncEl.style.display = 'none', 4000);
+    console.error('Sync from URL error:', e);
+  }
+}
+
+// ===== GOOGLE DRIVE SYNC =====
+const DRIVE_FILENAME = 'My Recipe Box - recipes.json';
+let driveFileId = localStorage.getItem('driveFileId') || null;
+let autoSaveTimer = null;
+
+function scheduleAutoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(pushToDrive, 4000);
+}
+
+function slimRecipes(recipeList) {
+  // Strip base64 image data before sending to Drive — images stay in localStorage only
+  return recipeList.map(r => {
+    const slim = Object.assign({}, r);
+    if (slim.image && slim.image.startsWith('data:')) slim.image = ''; // remove embedded base64
+    return slim;
+  });
+}
+
+async function pushToDrive() {
+  closeBackupMenu();
+  const syncEl = document.getElementById('syncStatus');
+  syncEl.style.display = 'block';
+  syncEl.textContent = '☁️ Saving to Drive…';
+  try {
+    const payload = { recipes: slimRecipes(recipes), mealPlan, shoppingList, savedAt: new Date().toISOString() };
+    const data = JSON.stringify(payload);
+    const result = await window.cowork.callMcpTool(
+      'mcp__f150a19d-00fb-42d0-947e-40dcafd6cd94__create_file',
+      { title: DRIVE_FILENAME, text_content: data, content_mime_type: 'application/json', disable_conversion_to_google_type: true }
+    );
+    if (result && result.id) {
+      driveFileId = result.id;
+      localStorage.setItem('driveFileId', driveFileId);
+    }
+    syncEl.textContent = `✅ Saved to Drive (${Math.round(data.length/1024)}KB)`;
+    setTimeout(() => syncEl.style.display = 'none', 2500);
+  } catch(e) {
+    const msg = e?.message || JSON.stringify(e) || 'unknown';
+    syncEl.textContent = `❌ Drive save failed: ${msg.slice(0,60)}`;
+    setTimeout(() => syncEl.style.display = 'none', 5000);
+    console.error('Drive push error:', e);
+  }
+}
+
+async function pullFromDrive() {
+  closeBackupMenu();
+  const syncEl = document.getElementById('syncStatus');
+  syncEl.style.display = 'block';
+  syncEl.textContent = '🔄 Loading from Drive…';
+  try {
+    // Find most recent recipe file in Drive
+    const searchResult = await window.cowork.callMcpTool(
+      'mcp__f150a19d-00fb-42d0-947e-40dcafd6cd94__search_files',
+      { query: `title = '${DRIVE_FILENAME}'`, pageSize: 10 }
+    );
+    const files = searchResult?.files || [];
+    if (!files.length) {
+      syncEl.textContent = '⚠️ No recipe file found in Drive';
+      setTimeout(() => syncEl.style.display = 'none', 3000);
+      return;
+    }
+    // Use the most recently modified file
+    const file = files.sort((a,b) => new Date(b.modifiedTime||0) - new Date(a.modifiedTime||0))[0];
+    driveFileId = file.id;
+    localStorage.setItem('driveFileId', driveFileId);
+    const dlResult = await window.cowork.callMcpTool(
+      'mcp__f150a19d-00fb-42d0-947e-40dcafd6cd94__download_file_content',
+      { file_id: driveFileId }
+    );
+    // Content comes back as base64
+    const jsonText = dlResult?.base64Content
+      ? atob(dlResult.base64Content)
+      : (dlResult?.content ? atob(dlResult.content) : null);
+    if (!jsonText) throw new Error('Empty response');
+    const data = JSON.parse(jsonText);
+    if (!Array.isArray(data.recipes)) throw new Error('Invalid data');
+    recipes = data.recipes;
+    if (data.mealPlan) mealPlan = data.mealPlan;
+    if (data.shoppingList) shoppingList = data.shoppingList;
+    save(); renderGrid();
+    syncEl.textContent = `✅ Loaded ${recipes.length} recipes from Drive`;
+    setTimeout(() => syncEl.style.display = 'none', 3000);
+  } catch(e) {
+    syncEl.textContent = '❌ Drive load failed';
+    setTimeout(() => syncEl.style.display = 'none', 3000);
+    console.error('Drive pull error:', e);
+  }
+}
+
+async function loadFromDriveOnStartup() {
+  // Silently try to load from Drive on first open
+  try {
+    const searchResult = await window.cowork.callMcpTool(
+      'mcp__f150a19d-00fb-42d0-947e-40dcafd6cd94__search_files',
+      { query: `title = '${DRIVE_FILENAME}'`, page_size: 5 }
+    );
+    const files = searchResult?.files || [];
+    if (!files.length) return;
+    const file = files.sort((a,b) => new Date(b.modifiedTime||0) - new Date(a.modifiedTime||0))[0];
+    driveFileId = file.id;
+    localStorage.setItem('driveFileId', driveFileId);
+    const dlResult = await window.cowork.callMcpTool(
+      'mcp__f150a19d-00fb-42d0-947e-40dcafd6cd94__download_file_content',
+      { file_id: driveFileId }
+    );
+    const jsonText = dlResult?.base64Content
+      ? atob(dlResult.base64Content)
+      : (dlResult?.content ? atob(dlResult.content) : null);
+    if (!jsonText) return;
+    const data = JSON.parse(jsonText);
+    if (!Array.isArray(data.recipes) || !data.recipes.length) return;
+    // Only load if Drive has more recipes than local (prefer Drive as source of truth)
+    if (data.recipes.length >= recipes.length) {
+      recipes = data.recipes;
+      if (data.mealPlan) mealPlan = data.mealPlan;
+      if (data.shoppingList) shoppingList = data.shoppingList;
+      save(); renderGrid();
+      toast(`✅ Loaded ${recipes.length} recipes from Google Drive`);
+    }
+  } catch(e) {
+    console.log('Startup Drive load skipped:', e.message);
+  }
+}
+
+// ===== PHONE: GOOGLE DRIVE SYNC (via REST API + GIS OAuth) =====
+const DRIVE_REST = 'https://www.googleapis.com/drive/v3';
+const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3';
+let _gToken = null;
+let _gTokenExpiry = 0;
+let phoneAutoSaveTimer = null;
+
+function openGoogleSetup() {
+  closeBackupMenu();
+  document.getElementById('googleClientIdInput').value = localStorage.getItem('googleClientId') || '';
+  document.getElementById('googleSetupStatus').textContent = '';
+  openModal('googleSetupOverlay');
+}
+
+function saveGoogleClientId() {
+  const id = document.getElementById('googleClientIdInput').value.trim();
+  if (!id || !id.includes('.apps.googleusercontent.com')) {
+    document.getElementById('googleSetupStatus').textContent = '⚠️ That doesn\'t look like a valid Client ID';
+    return;
+  }
+  localStorage.setItem('googleClientId', id);
+  document.getElementById('googleSetupStatus').textContent = '✅ Saved! Tap ☁️ Save to Google Drive to test.';
+  setTimeout(() => closeModal('googleSetupOverlay'), 1500);
+}
+
+async function getGoogleToken() {
+  if (_gToken && Date.now() < _gTokenExpiry - 60000) return _gToken;
+  const clientId = localStorage.getItem('googleClientId');
+  if (!clientId) { openGoogleSetup(); return null; }
+
+  // Check if we're returning from an OAuth redirect (token in URL hash)
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  const hashToken = hashParams.get('access_token');
+  const hashExpiry = hashParams.get('expires_in');
+  if (hashToken) {
+    _gToken = hashToken;
+    _gTokenExpiry = Date.now() + parseInt(hashExpiry || '3600') * 1000;
+    // Clean hash from URL
+    history.replaceState(null, '', window.location.pathname);
+    return _gToken;
+  }
+
+  // Redirect to Google OAuth (works reliably on mobile Safari)
+  const redirectUri = window.location.origin + window.location.pathname;
+  console.log('OAuth redirect_uri:', redirectUri);
+  // Show URI so user can verify it matches Google Cloud Console before redirecting
+  const proceed = confirm(`Google sign-in redirect URI:\n\n${redirectUri}\n\nMake sure this exact URL is listed under "Authorized redirect URIs" in your Google Cloud OAuth client.\n\nTap OK to continue to Google sign-in.`);
+  if (!proceed) return null;
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'token',
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    prompt: 'select_account'
+  });
+  // Save pending action so we can resume after redirect
+  const pendingAction = window._pendingDriveAction || 'push';
+  localStorage.setItem('pendingDriveAction', pendingAction);
+  window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+  return null; // page will redirect
+}
+
+async function phonePushToDrive() {
+  closeBackupMenu();
+  const syncEl = document.getElementById('syncStatus');
+  syncEl.style.display = 'block';
+  syncEl.textContent = '☁️ Signing in to Google…';
+  try {
+    window._pendingDriveAction = 'push';
+    const token = await getGoogleToken();
+    if (!token) { syncEl.style.display = 'none'; return; }
+    syncEl.textContent = '☁️ Saving to Drive…';
+    const payload = JSON.stringify({ recipes: slimRecipes(recipes), mealPlan, shoppingList, savedAt: new Date().toISOString() });
+    // Search for existing file
+    const search = await fetch(`${DRIVE_REST}/files?q=name%3D'${encodeURIComponent(DRIVE_FILENAME)}'%20and%20trashed%3Dfalse&fields=files(id)`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const { files } = await search.json();
+    if (files && files.length > 0) {
+      // Update existing
+      await fetch(`${DRIVE_UPLOAD}/files/${files[0].id}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: payload
+      });
+    } else {
+      // Create new
+      const meta = JSON.stringify({ name: DRIVE_FILENAME, mimeType: 'application/json' });
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], { type: 'application/json' }));
+      form.append('file', new Blob([payload], { type: 'application/json' }));
+      await fetch(`${DRIVE_UPLOAD}/files?uploadType=multipart`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form
+      });
+    }
+    syncEl.textContent = `✅ Saved to Drive (${Math.round(payload.length/1024)}KB)`;
+    setTimeout(() => syncEl.style.display = 'none', 2500);
+  } catch(e) {
+    syncEl.textContent = '❌ Drive save failed: ' + (e.message||'unknown error');
+    console.error('phonePushToDrive error:', e);
+    setTimeout(() => syncEl.style.display = 'none', 6000);
+  }
+}
+
+async function phonePullFromDrive() {
+  closeBackupMenu();
+  const syncEl = document.getElementById('syncStatus');
+  syncEl.style.display = 'block';
+  syncEl.textContent = '🔄 Signing in to Google…';
+  try {
+    window._pendingDriveAction = 'pull';
+    const token = await getGoogleToken();
+    if (!token) { syncEl.style.display = 'none'; return; }
+    syncEl.textContent = '🔄 Loading from Drive…';
+    const search = await fetch(`${DRIVE_REST}/files?q=name%3D'${encodeURIComponent(DRIVE_FILENAME)}'%20and%20trashed%3Dfalse&fields=files(id,modifiedTime)&orderBy=modifiedTime%20desc`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const { files } = await search.json();
+    if (!files || !files.length) { syncEl.textContent = '⚠️ No recipe file found in Drive'; setTimeout(()=>syncEl.style.display='none',3000); return; }
+    const dl = await fetch(`${DRIVE_REST}/files/${files[0].id}?alt=media`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await dl.json();
+    if (!Array.isArray(data.recipes)) throw new Error('Invalid data');
+    data.recipes.forEach(r => {
+      const idx = recipes.findIndex(x=>x.id===r.id);
+      if (idx >= 0) recipes[idx] = r; else recipes.push(r);
+    });
+    if (data.mealPlan) mealPlan = data.mealPlan;
+    if (data.shoppingList) shoppingList = data.shoppingList;
+    save(true); renderGrid();
+    syncEl.textContent = `✅ Loaded ${recipes.length} recipes from Drive`;
+    setTimeout(() => syncEl.style.display = 'none', 3000);
+  } catch(e) {
+    syncEl.textContent = '❌ Drive load failed: ' + (e.message||'');
+    setTimeout(() => syncEl.style.display = 'none', 4000);
+  }
+}
+
+function schedulePhoneAutoSave() {
+  clearTimeout(phoneAutoSaveTimer);
+  phoneAutoSaveTimer = setTimeout(() => {
+    if (localStorage.getItem('googleClientId')) phonePushToDrive();
+  }, 5000);
+}
+
+// ===== EXPORT / IMPORT JSON BACKUP =====
+function exportJSON(slim = false) {
+  closeBackupMenu();
+  const exportRecipes = slim ? slimRecipes(recipes) : recipes;
+  const data = { recipes: exportRecipes, mealPlan, shoppingList, exportedAt: new Date().toISOString() };
+  const json = JSON.stringify(data);
+  const ext = slim ? 'txt' : 'json';
+  const blob = new Blob([json], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const suffix = slim ? '-slim' : '';
+  a.download = `recipes-backup${suffix}-${new Date().toISOString().slice(0,10)}.${ext}`;
+  a.click();
+  toast(`Backup exported (${Math.round(json.length/1024)}KB)`);
+}
+
+async function importJSON(file) {
+  closeBackupMenu();
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!Array.isArray(data.recipes)) throw new Error('Invalid backup file');
+    const mergeCount = data.recipes.filter(r => !recipes.find(x=>x.id===r.id)).length;
+    const updateCount = data.recipes.length - mergeCount;
+    if (!confirm(`This backup has ${data.recipes.length} recipes.\nAdd ${mergeCount} new + update ${updateCount} existing?\n\nYour current recipes will be merged (not replaced).`)) return;
+    // Merge: add new, update existing by id
+    data.recipes.forEach(r => {
+      const idx = recipes.findIndex(x=>x.id===r.id);
+      if (idx >= 0) recipes[idx] = r; else recipes.push(r);
+    });
+    if (data.mealPlan) mealPlan = data.mealPlan;
+    if (data.shoppingList) shoppingList = data.shoppingList;
+    save(); renderGrid();
+    toast(`Imported ${data.recipes.length} recipes!`);
+  } catch(e) {
+    alert('Could not read backup file: ' + (e.message || e) + '\n\nTip: use "Export for phone (slim)" on desktop for smaller files that load faster on mobile.');
+  }
+}
+
+
+function openPasteImport() {
+  closeBackupMenu();
+  document.getElementById('pasteImportText').value = '';
+  document.getElementById('pasteImportStatus').textContent = '';
+  openModal('pasteImportOverlay');
+}
+
+function importFromPastedText() {
+  const text = document.getElementById('pasteImportText').value.trim();
+  if (!text) { document.getElementById('pasteImportStatus').textContent = 'Please paste your backup text first.'; return; }
+  try {
+    const data = JSON.parse(text);
+    if (!Array.isArray(data.recipes)) throw new Error('No recipes array found');
+    const mergeCount = data.recipes.filter(r => !recipes.find(x=>x.id===r.id)).length;
+    const updateCount = data.recipes.length - mergeCount;
+    data.recipes.forEach(r => {
+      const idx = recipes.findIndex(x=>x.id===r.id);
+      if (idx >= 0) recipes[idx] = r; else recipes.push(r);
+    });
+    if (data.mealPlan) mealPlan = data.mealPlan;
+    if (data.shoppingList) shoppingList = data.shoppingList;
+    save(true); renderGrid();
+    closeModal('pasteImportOverlay');
+    toast(`Loaded ${data.recipes.length} recipes!`);
+  } catch(e) {
+    document.getElementById('pasteImportStatus').textContent = '❌ ' + (e.message || 'Invalid JSON — make sure you copied the full file content.');
+  }
+}
+
+function toggleBackupMenu(e) {
+  e.stopPropagation();
+  const m = document.getElementById('backupMenu');
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+function closeBackupMenu() { document.getElementById('backupMenu').style.display = 'none'; }
+document.addEventListener('click', closeBackupMenu);
+
+// ===== QUICK IMAGE EDIT =====
+function quickEditImage(id) {
+  const r = recipes.find(x=>x.id===id); if (!r) return;
+  const url = prompt(`Paste an image URL for "${r.title}":`, r.image||'');
+  if (url === null) return; // cancelled
+  r.image = url.trim();
+  save(); renderGrid();
+  // refresh detail view if open
+  if (currentRecipeId === id) {
+    const img = document.getElementById('detailImg');
+    img.src = r.image;
+    img.style.display = r.image ? 'block' : 'none';
+  }
+  toast(r.image ? 'Image updated!' : 'Image removed');
+}
+
+// ===== INIT =====
+normalizeCategories();
+renderGrid();
+// Restore images from IndexedDB on startup (they aren't in localStorage)
+restoreImages().then(any => { if (any) renderGrid(); }).catch(() => {});
+
+// Handle return from Google OAuth redirect
+(async () => {
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  if (hashParams.get('access_token')) {
+    const pending = localStorage.getItem('pendingDriveAction');
+    localStorage.removeItem('pendingDriveAction');
+    if (pending === 'pull') await phonePullFromDrive();
+    else await phonePushToDrive();
+  }
+})();
+const isCowork = typeof window.cowork !== 'undefined';
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 500;
+const isDesktop = isCowork || !isMobile;
+// Show Drive options only in Cowork sidebar (has MCP access)
+document.getElementById('menu-desktop-items').style.display = isCowork ? 'block' : 'none';
+// Show sync link on any non-mobile context (Cowork OR desktop Chrome)
+document.getElementById('menu-sync-link').style.display = isMobile ? 'none' : 'block';
+// Show phone-only items on mobile
+document.getElementById('menu-phone-items').style.display = isMobile ? 'block' : 'none';
+if (isCowork) {
+  loadFromDriveOnStartup();
+} else {
+  checkSyncFromUrl();
+}
+</script>
+</body>
+</html>
