@@ -147,13 +147,11 @@ textarea.paste-area{width:100%;height:160px;padding:12px;border:1px solid var(--
       <div onclick="phonePushToDrive()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">☁️ Save to Google Drive</div>
       <div onclick="phonePullFromDrive()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">🔄 Load from Google Drive</div>
       <div onclick="openGoogleSetup()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">🔑 Connect Google Drive</div>
-      <div onclick="openPasteImport()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">📋 Paste backup text</div>
     </div>
     <div onclick="removeDuplicates()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">🧹 Remove duplicates</div>
     <div onclick="fixMissingImages()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">🖼️ Fix missing images</div>
     <div onclick="exportJSON(false)" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">📤 Export backup</div>
-    <div onclick="document.getElementById('importBackupFile').click()" style="padding:12px 16px;cursor:pointer;font-size:.9rem;border-bottom:1px solid var(--border)">📥 Import backup file</div>
-    <div onclick="openPasteImport()" style="padding:12px 16px;cursor:pointer;font-size:.9rem">📋 Paste backup text</div>
+    <div onclick="document.getElementById('importBackupFile').click()" style="padding:12px 16px;cursor:pointer;font-size:.9rem">📥 Import backup file</div>
     <input type="file" id="importBackupFile" accept=".json,.txt" style="display:none" onchange="importJSON(this.files[0])">
   </div>
 
@@ -629,7 +627,6 @@ function renderGrid() {
       <div class="card-body">
         <div class="card-title">${r.title}</div>
         <div class="card-meta">${r.totalTime||r.activeTime||''}</div>
-        ${(r.categories||[]).map(c=>`<span class="card-tag">${c}</span>`).join(' ')}
       </div>
     </div>`).join('');
 }
