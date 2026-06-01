@@ -1621,41 +1621,59 @@ function saveGoogleClientId() {
   setTimeout(() => closeModal('googleSetupOverlay'), 1500);
 }
 
+// PKCE helpers
+async function generatePKCE() {
+  const verifier = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/[^a-zA-Z0-9]/g,'').slice(0,64);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  return { verifier, challenge };
+}
+
 async function getGoogleToken() {
   if (_gToken && Date.now() < _gTokenExpiry - 60000) return _gToken;
   const clientId = localStorage.getItem('googleClientId');
   if (!clientId) { openGoogleSetup(); return null; }
 
-  // Check if we're returning from an OAuth redirect (token in URL hash)
-  const hashParams = new URLSearchParams(window.location.hash.slice(1));
-  const hashToken = hashParams.get('access_token');
-  const hashExpiry = hashParams.get('expires_in');
-  if (hashToken) {
-    _gToken = hashToken;
-    _gTokenExpiry = Date.now() + parseInt(hashExpiry || '3600') * 1000;
-    // Clean hash from URL
+  // Check if we're returning from an OAuth redirect (code in URL params)
+  const urlParams = new URLSearchParams(window.location.search);
+  const code = urlParams.get('code');
+  if (code) {
     history.replaceState(null, '', window.location.pathname);
-    return _gToken;
+    const verifier = localStorage.getItem('pkceVerifier');
+    localStorage.removeItem('pkceVerifier');
+    const redirectUri = window.location.origin + window.location.pathname;
+    const resp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ code, client_id: clientId, redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: verifier })
+    });
+    const data = await resp.json();
+    if (data.access_token) {
+      _gToken = data.access_token;
+      _gTokenExpiry = Date.now() + (data.expires_in||3600) * 1000;
+      return _gToken;
+    }
+    toast('❌ Google sign-in failed: ' + (data.error||'unknown'));
+    return null;
   }
 
-  // Redirect to Google OAuth (works reliably on mobile Safari)
+  // Start PKCE auth flow
   const redirectUri = window.location.origin + window.location.pathname;
-  console.log('OAuth redirect_uri:', redirectUri);
-  // Show URI so user can verify it matches Google Cloud Console before redirecting
-  const proceed = confirm(`Google sign-in redirect URI:\n\n${redirectUri}\n\nMake sure this exact URL is listed under "Authorized redirect URIs" in your Google Cloud OAuth client.\n\nTap OK to continue to Google sign-in.`);
-  if (!proceed) return null;
+  const { verifier, challenge } = await generatePKCE();
+  localStorage.setItem('pkceVerifier', verifier);
+  localStorage.setItem('pendingDriveAction', window._pendingDriveAction || 'push');
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
-    response_type: 'token',
+    response_type: 'code',
     scope: 'https://www.googleapis.com/auth/drive.file',
-    prompt: 'select_account'
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    access_type: 'offline',
+    prompt: 'consent'
   });
-  // Save pending action so we can resume after redirect
-  const pendingAction = window._pendingDriveAction || 'push';
-  localStorage.setItem('pendingDriveAction', pendingAction);
   window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
-  return null; // page will redirect
+  return null;
 }
 
 async function phonePushToDrive() {
@@ -1842,10 +1860,10 @@ renderGrid();
 // Restore images from IndexedDB on startup (they aren't in localStorage)
 restoreImages().then(any => { if (any) renderGrid(); }).catch(() => {});
 
-// Handle return from Google OAuth redirect
+// Handle return from Google OAuth PKCE redirect
 (async () => {
-  const hashParams = new URLSearchParams(window.location.hash.slice(1));
-  if (hashParams.get('access_token')) {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('code')) {
     const pending = localStorage.getItem('pendingDriveAction');
     localStorage.removeItem('pendingDriveAction');
     if (pending === 'pull') await phonePullFromDrive();
