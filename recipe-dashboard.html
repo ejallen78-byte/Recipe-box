@@ -181,6 +181,12 @@ textarea.paste-area{width:100%;height:160px;padding:12px;border:1px solid var(--
           <input type="text" id="googleClientIdInput" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com"
             style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:.82rem;font-family:monospace">
         </div>
+        <div class="form-group" style="margin-top:10px">
+          <label style="font-size:.85rem;font-weight:600">Google OAuth Client Secret</label>
+          <input type="text" id="googleClientSecretInput" placeholder="GOCSPX-xxxxxxxxxxxx"
+            style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:.82rem;font-family:monospace">
+          <p style="font-size:.75rem;color:var(--muted);margin-top:4px">Find this next to your Client ID in Google Cloud Console → Clients</p>
+        </div>
         <button class="btn btn-green" style="width:100%;margin-top:4px" onclick="saveGoogleClientId()">Save &amp; Connect →</button>
         <div id="googleSetupStatus" style="font-size:.82rem;color:var(--muted);margin-top:8px;text-align:center"></div>
       </div>
@@ -1603,22 +1609,29 @@ let _gToken = null;
 let _gTokenExpiry = 0;
 let phoneAutoSaveTimer = null;
 
-function openGoogleSetup() {
-  closeBackupMenu();
-  document.getElementById('googleClientIdInput').value = localStorage.getItem('googleClientId') || '';
-  document.getElementById('googleSetupStatus').textContent = '';
-  openModal('googleSetupOverlay');
-}
-
 function saveGoogleClientId() {
   const id = document.getElementById('googleClientIdInput').value.trim();
+  const secret = document.getElementById('googleClientSecretInput').value.trim();
   if (!id || !id.includes('.apps.googleusercontent.com')) {
     document.getElementById('googleSetupStatus').textContent = '⚠️ That doesn\'t look like a valid Client ID';
     return;
   }
+  if (!secret) {
+    document.getElementById('googleSetupStatus').textContent = '⚠️ Please enter your Client Secret too';
+    return;
+  }
   localStorage.setItem('googleClientId', id);
+  localStorage.setItem('googleClientSecret', secret);
   document.getElementById('googleSetupStatus').textContent = '✅ Saved! Tap ☁️ Save to Google Drive to test.';
   setTimeout(() => closeModal('googleSetupOverlay'), 1500);
+}
+
+function openGoogleSetup() {
+  closeBackupMenu();
+  document.getElementById('googleClientIdInput').value = localStorage.getItem('googleClientId') || '';
+  document.getElementById('googleClientSecretInput').value = localStorage.getItem('googleClientSecret') || '';
+  document.getElementById('googleSetupStatus').textContent = '';
+  openModal('googleSetupOverlay');
 }
 
 // PKCE helpers
@@ -1645,7 +1658,7 @@ async function getGoogleToken() {
     const resp = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ code, client_id: clientId, redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: verifier })
+      body: new URLSearchParams({ code, client_id: clientId, client_secret: localStorage.getItem('googleClientSecret')||'', redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: verifier })
     });
     const data = await resp.json();
     if (data.access_token) {
