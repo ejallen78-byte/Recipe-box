@@ -165,14 +165,15 @@ textarea.paste-area{width:100%;height:160px;padding:12px;border:1px solid var(--
       <div class="modal-body">
         <p style="font-size:.85rem;color:var(--muted);margin-bottom:14px">One-time setup so your phone can save & load recipes from Google Drive automatically.</p>
         <div style="background:var(--green-light);border-radius:10px;padding:12px;font-size:.82rem;line-height:1.6;margin-bottom:14px">
-          <strong>Setup steps (5 min):</strong><br>
+          <strong>Setup steps (one-time, ~5 min):</strong><br>
           1. Go to <strong>console.cloud.google.com</strong><br>
           2. Create a project (or pick an existing one)<br>
           3. APIs &amp; Services → Enable APIs → enable <strong>Google Drive API</strong><br>
           4. APIs &amp; Services → Credentials → Create Credentials → <strong>OAuth client ID</strong><br>
           5. Application type: <strong>Web application</strong><br>
-          6. Authorized JavaScript origins: add your Netlify URL (e.g. <em>https://your-app.netlify.app</em>)<br>
-          7. Copy the <strong>Client ID</strong> and paste it below
+          6. Authorized JavaScript origins: <code>https://ejallen78-byte.github.io</code><br>
+          7. Authorized redirect URIs: <code>https://ejallen78-byte.github.io/Recipe-box/recipe-dashboard.html</code><br>
+          8. Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> and paste them below
         </div>
         <div class="form-group">
           <label style="font-size:.85rem;font-weight:600">Google OAuth Client ID</label>
@@ -284,6 +285,7 @@ textarea.paste-area{width:100%;height:160px;padding:12px;border:1px solid var(--
       <div class="action-row">
         <button class="btn btn-green" onclick="addCurrentToShoppingList()">+ Shopping List</button>
         <button class="btn btn-outline" onclick="addCurrentToPlanner()">+ Meal Planner</button>
+        <button class="btn btn-outline" onclick="shareRecipe()">📤 Share</button>
         <button class="btn btn-outline" onclick="quickEditImage(currentRecipeId)">📷 Image</button>
         <button class="btn btn-outline" onclick="editCurrentRecipe()">✏️ Edit</button>
         <button class="btn btn-outline" style="color:red" onclick="deleteCurrentRecipe()">🗑️ Delete</button>
@@ -319,11 +321,22 @@ textarea.paste-area{width:100%;height:160px;padding:12px;border:1px solid var(--
       </div>
 
       <div class="import-section" id="import-pepperplate">
-        <p style="font-size:.85rem;margin-bottom:12px;color:var(--muted)">Upload all <strong>.txt files</strong> from your Pepperplate zip (select multiple).</p>
-        <label class="file-drop" id="ppDrop">
-          <div>📄 Tap to select .txt files (select all)</div>
-          <input type="file" accept=".txt" multiple onchange="importPepperplate(this.files)">
-        </label>
+        <div style="font-size:.85rem;margin-bottom:12px;color:var(--muted);line-height:1.6;background:var(--green-light);border-radius:8px;padding:10px">
+          <strong>Steps:</strong><br>
+          1. Unzip your Pepperplate export file<br>
+          2. <strong>Option A — Select files:</strong> Open the unzipped folder, search for <strong>"pepperplate"</strong> in the search bar, then press <strong>Cmd+A</strong> (Mac) / <strong>Ctrl+A</strong> (Windows / Android) to select all, then tap Open<br>
+          3. <strong>Option B — Select folder:</strong> Use the folder button below to pick the whole folder at once
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <label class="file-drop" id="ppDrop" style="flex:1">
+            <div>📄 Select .txt files</div>
+            <input type="file" accept=".txt" multiple onchange="importPepperplate(this.files)">
+          </label>
+          <label class="file-drop" style="flex:1">
+            <div>📁 Select folder</div>
+            <input type="file" webkitdirectory onchange="importPepperplateFolder(this.files)">
+          </label>
+        </div>
         <div class="progress" id="ppProgress"><div class="progress-bar" id="ppBar" style="width:0%"></div></div>
         <div class="status-msg" id="ppStatus"></div>
       </div>
@@ -1155,6 +1168,16 @@ async function importPepperplate(files) {
   toast(`Imported ${count} recipes from Pepperplate`);
 }
 
+async function importPepperplateFolder(files) {
+  // Filter to only .txt files (folder picker may include other files)
+  const txtFiles = Array.from(files).filter(f => f.name.endsWith('.txt'));
+  if (!txtFiles.length) {
+    document.getElementById('ppStatus').textContent = '⚠️ No .txt files found in that folder.';
+    return;
+  }
+  await importPepperplate(txtFiles);
+}
+
 // ===== REMOVE DUPLICATES =====
 function removeDuplicates() {
   closeBackupMenu();
@@ -1640,11 +1663,20 @@ async function generatePKCE() {
 }
 
 async function getGoogleToken() {
+  // 1. In-memory cache
   if (_gToken && Date.now() < _gTokenExpiry - 60000) return _gToken;
+  // 2. localStorage cache
+  const cachedToken = localStorage.getItem('gAccessToken');
+  const cachedExpiry = parseInt(localStorage.getItem('gAccessTokenExpiry') || '0');
+  if (cachedToken && Date.now() < cachedExpiry - 60000) {
+    _gToken = cachedToken; _gTokenExpiry = cachedExpiry; return _gToken;
+  }
+
   const clientId = localStorage.getItem('googleClientId');
+  const clientSecret = localStorage.getItem('googleClientSecret') || '';
   if (!clientId) { openGoogleSetup(); return null; }
 
-  // Check if we're returning from an OAuth redirect (code in URL params)
+  // 3. Returning from OAuth redirect?
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
   if (code) {
@@ -1655,19 +1687,42 @@ async function getGoogleToken() {
     const resp = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ code, client_id: clientId, client_secret: localStorage.getItem('googleClientSecret')||'', redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: verifier })
+      body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: 'authorization_code', code_verifier: verifier })
     });
     const data = await resp.json();
     if (data.access_token) {
       _gToken = data.access_token;
       _gTokenExpiry = Date.now() + (data.expires_in||3600) * 1000;
+      localStorage.setItem('gAccessToken', _gToken);
+      localStorage.setItem('gAccessTokenExpiry', String(_gTokenExpiry));
+      if (data.refresh_token) localStorage.setItem('gRefreshToken', data.refresh_token);
       return _gToken;
     }
     toast('❌ Google sign-in failed: ' + (data.error||'unknown'));
     return null;
   }
 
-  // Start PKCE auth flow
+  // 4. Try refresh token (no redirect needed)
+  const refreshToken = localStorage.getItem('gRefreshToken');
+  if (refreshToken && clientSecret) {
+    try {
+      const resp = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ refresh_token: refreshToken, client_id: clientId, client_secret: clientSecret, grant_type: 'refresh_token' })
+      });
+      const data = await resp.json();
+      if (data.access_token) {
+        _gToken = data.access_token;
+        _gTokenExpiry = Date.now() + (data.expires_in||3600) * 1000;
+        localStorage.setItem('gAccessToken', _gToken);
+        localStorage.setItem('gAccessTokenExpiry', String(_gTokenExpiry));
+        return _gToken;
+      }
+    } catch(e) { console.warn('Refresh token failed:', e); }
+  }
+
+  // 5. Full PKCE redirect flow
   const redirectUri = window.location.origin + window.location.pathname;
   const { verifier, challenge } = await generatePKCE();
   localStorage.setItem('pkceVerifier', verifier);
@@ -1684,6 +1739,42 @@ async function getGoogleToken() {
   });
   window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
   return null;
+}
+
+async function phoneLoadFromDriveOnStartup() {
+  // Don't run during an OAuth callback
+  if (new URLSearchParams(window.location.search).get('code')) return;
+  // Only run if we have credentials + a cached token or refresh token
+  const clientId = localStorage.getItem('googleClientId');
+  const hasToken = (localStorage.getItem('gAccessToken') && Date.now() < parseInt(localStorage.getItem('gAccessTokenExpiry')||'0') - 60000)
+                 || localStorage.getItem('gRefreshToken');
+  if (!clientId || !hasToken) return;
+  try {
+    const token = await getGoogleToken();
+    if (!token) return;
+    const search = await fetch(`${DRIVE_REST}/files?q=name%3D'${encodeURIComponent(DRIVE_FILENAME)}'%20and%20trashed%3Dfalse&fields=files(id,modifiedTime)&orderBy=modifiedTime%20desc`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const { files } = await search.json();
+    if (!files || !files.length) return;
+    const dl = await fetch(`${DRIVE_REST}/files/${files[0].id}?alt=media`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await dl.json();
+    if (!Array.isArray(data.recipes) || !data.recipes.length) return;
+    // Merge (don't replace) so local-only changes aren't lost
+    let added = 0;
+    data.recipes.forEach(r => {
+      const idx = recipes.findIndex(x=>x.id===r.id);
+      if (idx >= 0) recipes[idx] = r; else { recipes.push(r); added++; }
+    });
+    if (data.mealPlan) mealPlan = data.mealPlan;
+    if (data.shoppingList) shoppingList = data.shoppingList;
+    save(true); renderGrid();
+    if (added > 0 || recipes.length > 0) toast(`✅ Loaded ${recipes.length} recipes from Drive`);
+  } catch(e) {
+    console.log('Phone startup Drive load skipped:', e.message);
+  }
 }
 
 async function phonePushToDrive() {
@@ -1848,6 +1939,42 @@ function toggleBackupMenu(e) {
 function closeBackupMenu() { document.getElementById('backupMenu').style.display = 'none'; }
 document.addEventListener('click', closeBackupMenu);
 
+// ===== SHARE RECIPE =====
+function formatRecipeAsText(r) {
+  let text = r.title + '\n';
+  if (r.yield) text += `Yield: ${r.yield}\n`;
+  if (r.activeTime) text += `Active time: ${r.activeTime}\n`;
+  if (r.totalTime) text += `Total time: ${r.totalTime}\n`;
+  if (r.description) text += `\n${r.description}\n`;
+  text += '\nINGREDIENTS\n';
+  (r.ingredients||[]).forEach(g => {
+    if (g.group) text += `\n${g.group}\n`;
+    (g.items||[]).forEach(item => { text += `• ${item}\n`; });
+  });
+  text += '\nINSTRUCTIONS\n';
+  (r.instructions||[]).forEach((step, i) => { text += `${i+1}. ${step}\n`; });
+  const notes = (r.notes||[]).filter(Boolean);
+  if (notes.length) { text += '\nNOTES\n'; notes.forEach(n => { text += `${n}\n`; }); }
+  if (r.url) text += `\nSource: ${r.url}`;
+  return text.trim();
+}
+
+async function shareRecipe() {
+  const r = recipes.find(x=>x.id===currentRecipeId); if (!r) return;
+  const text = formatRecipeAsText(r);
+  if (navigator.share) {
+    try { await navigator.share({ title: r.title, text }); return; }
+    catch(e) { if (e.name === 'AbortError') return; }
+  }
+  // Fallback: copy to clipboard
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Recipe copied to clipboard!');
+  } catch(e) {
+    toast('Could not share — try copying manually');
+  }
+}
+
 // ===== QUICK IMAGE EDIT =====
 function quickEditImage(id) {
   const r = recipes.find(x=>x.id===id); if (!r) return;
@@ -1893,6 +2020,7 @@ if (isCowork) {
   loadFromDriveOnStartup();
 } else {
   checkSyncFromUrl();
+  phoneLoadFromDriveOnStartup(); // silently re-load from Drive if refresh token exists
 }
 </script>
 </body>
